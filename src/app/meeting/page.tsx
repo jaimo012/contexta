@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import TopBar from "@/components/meeting/TopBar";
 import SummaryBlock from "@/components/meeting/SummaryBlock";
 import AiHint from "@/components/meeting/AiHint";
@@ -9,34 +9,17 @@ import GlossaryCard from "@/components/meeting/GlossaryCard";
 import ClientModeOverlay from "@/components/meeting/ClientModeOverlay";
 import { useMeetingStore } from "@/store/useMeetingStore";
 
-const DUMMY_SUMMARIES = [
-  {
-    time: "14:00 – 14:05",
-    content: [
-      "고객사 담당자가 현재 사내 ERP 시스템의 데이터 연동 지연 문제를 언급했습니다.",
-      "기존 솔루션 대비 실시간 동기화 속도 개선이 이번 도입의 핵심 기대사항입니다.",
-      "내부 보안 심사 일정이 4월 중으로 예정되어 있어, 그 전에 PoC 완료가 필요합니다.",
-    ],
-  },
-  {
-    time: "14:05 – 14:10",
-    content: [
-      "가격 모델에 대한 질문이 나왔습니다. 연간 계약 시 할인 여부를 확인해 달라는 요청입니다.",
-      "경쟁사 B의 제안서를 이미 받은 상태이며, 우리 측 차별점을 구체적으로 비교해 줄 것을 요구했습니다.",
-    ],
-  },
-  {
-    time: "14:10 – 14:15",
-    content: [
-      "고객사 CTO가 온프레미스 배포 옵션에 대한 기술적 요구사항을 상세히 설명했습니다.",
-      "AWS 기반 클라우드 배포와 온프레미스 하이브리드 구성이 가능한지 확인 요청을 받았습니다.",
-      "SLA 99.9% 보장 조건과 장애 대응 프로세스에 대한 문서 공유를 요청받았습니다.",
-    ],
-  },
-];
-
 export default function MeetingPage() {
   const toggleClientMode = useMeetingStore((s) => s.toggleClientMode);
+  const transcripts = useMeetingStore((s) => s.transcripts);
+  const hints = useMeetingStore((s) => s.hints);
+  const isRecording = useMeetingStore((s) => s.isRecording);
+
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [transcripts, hints]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -50,6 +33,8 @@ export default function MeetingPage() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [toggleClientMode]);
 
+  const hasContent = transcripts.length > 0 || hints.length > 0;
+
   return (
     <div className="h-screen w-screen overflow-hidden bg-gray-50 flex flex-col">
       <ClientModeOverlay />
@@ -57,16 +42,35 @@ export default function MeetingPage() {
       <div className="flex-1 flex flex-row w-full h-[calc(100vh-4rem)]">
         {/* 좌측 메인 영역 (70%) */}
         <section className="w-[70%] h-full border-r bg-white p-6 overflow-y-auto">
-          {DUMMY_SUMMARIES.map((block) => (
+          {!hasContent && (
+            <div className="flex items-center justify-center h-full">
+              <p className="text-gray-400 text-sm">
+                {isRecording
+                  ? "음성을 인식하고 있습니다. 대화를 시작하세요..."
+                  : "녹음을 시작하면 실시간 요약과 힌트가 여기에 표시됩니다."}
+              </p>
+            </div>
+          )}
+
+          {transcripts.map((entry) => (
             <SummaryBlock
-              key={block.time}
-              time={block.time}
-              content={block.content}
+              key={entry.id}
+              time={new Date(entry.timestamp).toLocaleTimeString("ko-KR", {
+                hour: "2-digit",
+                minute: "2-digit",
+                second: "2-digit",
+              })}
+              content={[entry.text]}
             />
           ))}
-          <div className="pt-2">
-            <AiHint message="비용 이야기가 나왔습니다. 도입 사례 12p의 ROI 절감 지표를 언급해 보세요." />
-          </div>
+
+          {hints.map((hint) => (
+            <div key={hint.id} className="pt-2">
+              <AiHint message={hint.text} />
+            </div>
+          ))}
+
+          <div ref={bottomRef} />
         </section>
 
         {/* 우측 사이드 영역 (30%) */}

@@ -3,6 +3,7 @@
 import { useMeetingStore } from "@/store/useMeetingStore";
 import { useAudioRecorder } from "@/hooks/useAudioRecorder";
 import { useMeetingTimer } from "@/hooks/useMeetingTimer";
+import { useAiHint } from "@/hooks/useAiHint";
 
 function formatTime(totalSeconds: number): string {
   const h = Math.floor(totalSeconds / 3600);
@@ -18,6 +19,7 @@ export default function TopBar() {
   const isSpeaking = useMeetingStore((s) => s.isSpeaking);
   const { startRecording, stopRecording } = useAudioRecorder();
   const { startTimer, stopTimer } = useMeetingTimer();
+  const { fetchHint } = useAiHint();
 
   const handleStart = () => {
     startRecording();
@@ -58,7 +60,10 @@ export default function TopBar() {
 
       {/* 우측: 액션 버튼 */}
       <div className="flex items-center gap-2 md:gap-3">
-        <button className="px-3 md:px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors">
+        <button
+          onClick={fetchHint}
+          className="px-3 md:px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
+        >
           💡 힌트 줘
         </button>
         <button

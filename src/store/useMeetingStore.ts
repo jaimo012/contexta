@@ -1,5 +1,17 @@
 import { create } from "zustand";
 
+interface TranscriptEntry {
+  id: string;
+  text: string;
+  timestamp: number;
+}
+
+interface HintEntry {
+  id: string;
+  text: string;
+  timestamp: number;
+}
+
 interface MeetingState {
   isRecording: boolean;
   isClientMode: boolean;
@@ -7,6 +19,8 @@ interface MeetingState {
   isMicGranted: boolean;
   isSpeaking: boolean;
   audioChunks: Blob[];
+  transcripts: TranscriptEntry[];
+  hints: HintEntry[];
 }
 
 interface MeetingActions {
@@ -19,6 +33,8 @@ interface MeetingActions {
   setIsSpeaking: (value: boolean) => void;
   addAudioChunk: (chunk: Blob) => void;
   clearAudioChunks: () => void;
+  addTranscript: (entry: TranscriptEntry) => void;
+  addHint: (entry: HintEntry) => void;
 }
 
 const INITIAL_STATE: MeetingState = {
@@ -28,6 +44,8 @@ const INITIAL_STATE: MeetingState = {
   isMicGranted: false,
   isSpeaking: false,
   audioChunks: [],
+  transcripts: [],
+  hints: [],
 };
 
 export const useMeetingStore = create<MeetingState & MeetingActions>(
@@ -45,5 +63,9 @@ export const useMeetingStore = create<MeetingState & MeetingActions>(
     addAudioChunk: (chunk) =>
       set((state) => ({ audioChunks: [...state.audioChunks, chunk] })),
     clearAudioChunks: () => set({ audioChunks: [] }),
+    addTranscript: (entry) =>
+      set((state) => ({ transcripts: [...state.transcripts, entry] })),
+    addHint: (entry) =>
+      set((state) => ({ hints: [...state.hints, entry] })),
   })
 );

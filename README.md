@@ -56,8 +56,9 @@ contexta/
 │   │   ├── api/                  # API Routes
 │   │   │   ├── auth/             # 인증 API
 │   │   │   ├── meeting/          # 미팅 CRUD API
-│   │   │   ├── stt/              # STT 연동 API
-│   │   │   └── ai/               # AI 힌트/회의록 API
+│   │   │   ├── stt/              # Deepgram STT 프록시 API
+│   │   │   ├── hint/             # Claude AI 힌트 생성 API
+│   │   │   └── ai/               # AI 회의록 API
 │   │   ├── layout.tsx            # 루트 레이아웃
 │   │   ├── page.tsx              # 랜딩 페이지
 │   │   └── globals.css           # 전역 스타일
@@ -72,7 +73,8 @@ contexta/
 │   │       ├── GlossaryCard.tsx  # IT 용어 사전 카드
 │   │       └── ClientModeOverlay.tsx  # 위장 메모장 오버레이
 │   ├── hooks/                    # 커스텀 훅
-│   │   ├── useAudioRecorder.ts  # 마이크 녹음 + VAD 무음 커트
+│   │   ├── useAudioRecorder.ts  # 마이크 녹음 + VAD + STT 전송
+│   │   ├── useAiHint.ts         # AI 힌트 수동/자동 호출
 │   │   └── useMeetingTimer.ts   # 미팅 경과 시간 카운터
 │   ├── store/                    # Zustand 글로벌 상태 관리
 │   │   └── useMeetingStore.ts    # 미팅 상태 (녹음, 클라이언트 모드, 타이머)
@@ -198,7 +200,51 @@ npm run dev
 | useAudioRecorder | `hooks/useAudioRecorder.ts` | 마이크 녹음 + AnalyserNode + VAD 무음 커트 |
 | useMeetingTimer | `hooks/useMeetingTimer.ts` | 미팅 경과 시간 1초 카운터 |
 
-### Phase 3: 미팅 종료 후 기능 (예정)
+### Phase 3: 실시간 AI 파이프라인 연동 완료 ✅
+
+Deepgram STT와 Claude Haiku LLM을 Next.js API Routes로 연동하고, 프론트엔드에서 실시간 데이터를 화면에 렌더링하는 전체 파이프라인을 구축했습니다.
+
+- [x] **환경변수 세팅** — `.env.local`에 `DEEPGRAM_API_KEY`, `ANTHROPIC_API_KEY` 설정, `.env.local.example` 템플릿 동기화
+- [x] **Zustand 스토어 확장** — `transcripts`(변환 텍스트 배열), `hints`(AI 힌트 배열) 상태 + `addTranscript`, `addHint` 액션 추가
+- [x] **STT API Route (`/api/stt`)** — `@deepgram/sdk` 활용, FormData로 오디오 Blob 수신 → Deepgram Nova-2 (한국어) → 텍스트 JSON 응답, 4가지 에러 케이스 처리
+- [x] **LLM Hint API Route (`/api/hint`)** — `@anthropic-ai/sdk` 활용, 누적 대화 텍스트 수신 → Claude 3.5 Haiku → 1문장 코칭 힌트 JSON 응답
+- [x] **프론트엔드 STT 전송** — `useAudioRecorder` 내 `sendChunkToSTT` 함수, VAD 통과 청크를 즉시 `/api/stt`로 POST, 중복 전송 방지(`isSendingRef`), 응답 텍스트 → `addTranscript`
+- [x] **useAiHint 훅 (수동+자동)** — [힌트 줘] 버튼 클릭 시 수동 호출, 새 transcript 후 3초 무음 디바운스 자동 호출, 5분 주기 자동 호출, 중복 방지(`isFetchingRef`)
+- [x] **실시간 UI 렌더링** — 더미 데이터 전부 제거, `transcripts` → `SummaryBlock`, `hints` → `AiHint`로 실시간 `map` 렌더링, 데이터 없을 때 상태별 안내 문구
+- [x] **오토 스크롤** — `useRef` + `scrollIntoView({ behavior: "smooth" })`로 새 데이터 추가 시 좌측 패널 자동 하단 스크롤
+
+#### 전체 데이터 흐름
+
+```
+[녹음 시작] → 마이크 → MediaRecorder (1초 단위)
+              ↓
+         VAD 필터 (isSpeaking?)
+              ↓ (음성만 통과)
+         /api/stt (Deepgram Nova-2 한국어)
+              ↓
+         addTranscript → 좌측 SummaryBlock 렌더링
+              ↓
+         3초 무음 감지 or [힌트 줘] 클릭 or 5분 경과
+              ↓
+         /api/hint (Claude 3.5 Haiku)
+              ↓
+         addHint → 좌측 AiHint(파스텔 블루) 렌더링
+              ↓
+         오토 스크롤 ↓↓↓
+```
+
+#### Phase 3에서 생성/수정된 파일
+
+| 파일 | 경로 | 역할 |
+|------|------|------|
+| STT API | `app/api/stt/route.ts` | Deepgram 프록시 (음성→텍스트) |
+| Hint API | `app/api/hint/route.ts` | Claude Haiku 프록시 (텍스트→힌트) |
+| useAiHint | `hooks/useAiHint.ts` | 힌트 수동/자동 호출 훅 |
+| useAudioRecorder | `hooks/useAudioRecorder.ts` | STT 전송 로직 추가 |
+| useMeetingStore | `store/useMeetingStore.ts` | transcripts/hints 상태 확장 |
+| MeetingPage | `app/meeting/page.tsx` | 실데이터 렌더링 + 오토스크롤 |
+
+### Phase 4: 미팅 종료 후 기능 (예정)
 
 - [ ] CLOVA Speech 사후 처리
 - [ ] 화자 분리 매핑

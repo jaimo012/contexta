@@ -15,11 +15,14 @@ export function useAudioRecorder() {
   const rafIdRef = useRef<number | null>(null);
   const lastSpeakTimeRef = useRef<number>(0);
 
+  const isSendingRef = useRef(false);
+
   const setMicGranted = useMeetingStore((s) => s.setMicGranted);
   const setIsRecording = useMeetingStore((s) => s.setIsRecording);
   const setIsSpeaking = useMeetingStore((s) => s.setIsSpeaking);
   const addAudioChunk = useMeetingStore((s) => s.addAudioChunk);
   const clearAudioChunks = useMeetingStore((s) => s.clearAudioChunks);
+  const addTranscript = useMeetingStore((s) => s.addTranscript);
 
   const detectSound = useCallback(() => {
     const analyser = analyserRef.current;
@@ -53,6 +56,32 @@ export function useAudioRecorder() {
     rafIdRef.current = requestAnimationFrame(loop);
   }, [setIsSpeaking]);
 
+  const sendChunkToSTT = useCallback(async (chunk: Blob) => {
+    if (isSendingRef.current) return;
+    isSendingRef.current = true;
+
+    try {
+      const formData = new FormData();
+      formData.append("audio", chunk, "chunk.webm");
+
+      const res = await fetch("/api/stt", { method: "POST", body: formData });
+      const data = await res.json();
+
+      if (res.ok && data.text && data.text.trim() !== "") {
+        addTranscript({
+          id: crypto.randomUUID(),
+          text: data.text,
+          timestamp: Date.now(),
+        });
+        console.log(`[STT] 📝 "${data.text}"`);
+      }
+    } catch (err) {
+      console.error("[STT] 전송 실패:", err);
+    } finally {
+      isSendingRef.current = false;
+    }
+  }, [addTranscript]);
+
   const startRecording = useCallback(async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -80,9 +109,7 @@ export function useAudioRecorder() {
         const speaking = useMeetingStore.getState().isSpeaking;
         if (e.data.size > 0 && speaking) {
           addAudioChunk(e.data);
-          console.log(
-            `[VAD] 🎙️ Chunk 저장 (${e.data.size} bytes) | 총 ${useMeetingStore.getState().audioChunks.length + 1}개`
-          );
+          sendChunkToSTT(e.data);
         }
       };
 
@@ -94,7 +121,7 @@ export function useAudioRecorder() {
       setMicGranted(false);
       alert("마이크 권한이 필요합니다");
     }
-  }, [setMicGranted, setIsRecording, addAudioChunk, clearAudioChunks, detectSound]);
+  }, [setMicGranted, setIsRecording, addAudioChunk, clearAudioChunks, detectSound, sendChunkToSTT]);
 
   const stopRecording = useCallback(() => {
     if (rafIdRef.current !== null) {
