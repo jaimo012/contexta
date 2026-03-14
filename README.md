@@ -349,6 +349,46 @@ PostMeetingResult 모달 → [복사] / [다운로드] / [← 대시보드]
 | useMeetingStore | `store/useMeetingStore.ts` | `isSavedToDb` 상태 추가 |
 | layout.tsx | `app/layout.tsx` | AuthProvider 래핑 |
 
+### Phase 6: 개인화 설정 및 무료 유저 락인 시스템 완료 ✅
+
+프로젝트(폴더) 관리, 나만의 용어 사전 CRUD 및 STT 부스팅 연동, 사용 시간 제한과 게이미피케이션 미션 보상 시스템을 구축했습니다.
+
+- [x] **DB 스키마 확장** — `projects` 테이블(폴더), `custom_words` 테이블(나만의 사전), `meetings.project_id` FK(nullable, ON DELETE SET NULL), `users.used_seconds`·`limit_seconds` 컬럼, `increment_used_seconds` RPC 함수, 전 테이블 RLS 정책 완비
+- [x] **프로젝트(폴더) 관리** — 대시보드 [📁 새 프로젝트 생성] 모달 + Supabase INSERT, 프로젝트 뱃지 목록, 미팅 카드에 프로젝트 뱃지 표시
+- [x] **미팅 TopBar 동적화** — 하드코딩 제목 → `input` 직접 입력, 프로젝트 `select` 드롭다운으로 폴더 할당, `saveMeetingToDb`에 `title`·`project_id` 반영
+- [x] **나만의 사전 CRUD** — `/settings/dictionary` 페이지 신규 생성, 단어·설명 추가(INSERT), 인라인 수정(UPDATE), 확인 후 삭제(DELETE), 등록 개수 표시
+- [x] **Deepgram STT 커스텀 키워드 부스팅** — `api/stt/route.ts`에서 서버 사이드 Supabase 쿠키 인증으로 유저 식별, `custom_words` 조회 → `keywords: ["단어:2"]` 형태로 Deepgram에 주입, 60초 TTL 인메모리 캐시, `Promise.all` 오디오 파싱/DB 조회 병렬 처리
+- [x] **사용 시간 제한** — `useMeetingTimer`에서 매 초 클라이언트 사이드 카운트 + 30초 배치 DB 동기화(`supabase.rpc`), `used_seconds >= limit_seconds` 도달 시 강제 녹음 종료 + alert, 동기화 실패 시 재시도 복구
+- [x] **게이미피케이션 미션** — 대시보드 상단 사용 시간 프로그레스 바(파랑→노랑→빨강 3단계), 무료 유저 전용 "단어 10개 등록 시 +1시간" 락인 미션 배너, 미션 진행 바, 달성 시 [🎁 보상 받기] 버튼 → `limit_seconds` 7200으로 확장
+
+#### 사용 시간 관리 구조
+
+```
+[녹음 시작] → fetchUserQuota() → used: 1800, limit: 3600
+     ↓
+매 1초 → meetingTime + 1 → userUsedRef + 1 → pendingSeconds + 1
+     ↓ 30초 누적
+supabase.rpc("increment_used_seconds", { delta: 30 })
+     ↓ used >= limit
+강제 종료 → alert("사용 시간 만료") → 녹음 중지
+     ↓
+대시보드 프로그레스 바 반영 → 미션 배너로 유도
+     ↓ 단어 10개 달성
+[🎁 보상 받기] → limit_seconds = 7200 (+1시간 확장)
+```
+
+#### Phase 6에서 생성/수정된 파일
+
+| 파일 | 경로 | 역할 |
+|------|------|------|
+| schema.sql | `database/schema.sql` | projects, custom_words 테이블 + users 시간 컬럼 + RPC |
+| DashboardPage | `app/dashboard/page.tsx` | 프로젝트 모달 + 프로그레스 바 + 미션 배너 |
+| TopBar | `components/meeting/TopBar.tsx` | 동적 제목 + 프로젝트 드롭다운 |
+| DictionaryPage | `app/settings/dictionary/page.tsx` | 나만의 사전 CRUD 페이지 |
+| STT API | `app/api/stt/route.ts` | 커스텀 키워드 부스팅 + 캐싱 |
+| useMeetingTimer | `hooks/useMeetingTimer.ts` | 시간 배치 동기화 + 제한 강제 종료 |
+| useMeetingStore | `store/useMeetingStore.ts` | meetingTitle, selectedProjectId 상태 추가 |
+
 ---
 
 ## 라이선스

@@ -16,6 +16,8 @@ interface MeetingState {
   isRecording: boolean;
   isClientMode: boolean;
   meetingTime: number;
+  meetingTitle: string;
+  selectedProjectId: string | null;
   isMicGranted: boolean;
   isSpeaking: boolean;
   audioChunks: Blob[];
@@ -43,12 +45,16 @@ interface MeetingActions {
   setIsGeneratingMinutes: (value: boolean) => void;
   setFinalMinutes: (value: string) => void;
   setIsSavedToDb: (value: boolean) => void;
+  setMeetingTitle: (value: string) => void;
+  setSelectedProjectId: (value: string | null) => void;
 }
 
 const INITIAL_STATE: MeetingState = {
   isRecording: false,
   isClientMode: false,
   meetingTime: 0,
+  meetingTitle: "",
+  selectedProjectId: null,
   isMicGranted: false,
   isSpeaking: false,
   audioChunks: [],
@@ -83,5 +89,7 @@ export const useMeetingStore = create<MeetingState & MeetingActions>(
     setIsGeneratingMinutes: (value) => set({ isGeneratingMinutes: value }),
     setFinalMinutes: (value) => set({ finalMinutes: value }),
     setIsSavedToDb: (value) => set({ isSavedToDb: value }),
+    setMeetingTitle: (value) => set({ meetingTitle: value }),
+    setSelectedProjectId: (value) => set({ selectedProjectId: value }),
   })
 );

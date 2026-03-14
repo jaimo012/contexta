@@ -1,11 +1,17 @@
 "use client";
 
+import { useState, useEffect, useCallback } from "react";
 import { useMeetingStore } from "@/store/useMeetingStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useAudioRecorder } from "@/hooks/useAudioRecorder";
 import { useMeetingTimer } from "@/hooks/useMeetingTimer";
 import { useAiHint } from "@/hooks/useAiHint";
 import { supabase } from "@/utils/supabaseClient";
+
+interface Project {
+  id: string;
+  name: string;
+}
 
 function formatTime(totalSeconds: number): string {
   const h = Math.floor(totalSeconds / 3600);
@@ -19,9 +25,28 @@ export default function TopBar() {
   const meetingTime = useMeetingStore((s) => s.meetingTime);
   const isRecording = useMeetingStore((s) => s.isRecording);
   const isSpeaking = useMeetingStore((s) => s.isSpeaking);
+  const meetingTitle = useMeetingStore((s) => s.meetingTitle);
+  const selectedProjectId = useMeetingStore((s) => s.selectedProjectId);
+  const setMeetingTitle = useMeetingStore((s) => s.setMeetingTitle);
+  const setSelectedProjectId = useMeetingStore((s) => s.setSelectedProjectId);
+
   const { startRecording, stopRecording } = useAudioRecorder();
   const { startTimer, stopTimer } = useMeetingTimer();
   const { fetchHint } = useAiHint();
+
+  const [projects, setProjects] = useState<Project[]>([]);
+
+  const fetchProjects = useCallback(async () => {
+    const { data } = await supabase
+      .from("projects")
+      .select("id, name")
+      .order("created_at", { ascending: false });
+    if (data) setProjects(data);
+  }, []);
+
+  useEffect(() => {
+    fetchProjects();
+  }, [fetchProjects]);
 
   const handleStart = () => {
     startRecording();
@@ -70,14 +95,21 @@ export default function TopBar() {
       return;
     }
 
-    const MEETING_TITLE = "A사 솔루션 도입 1차 미팅";
+    const { meetingTitle: title, selectedProjectId: projectId } =
+      useMeetingStore.getState();
 
-    const { error } = await supabase.from("meetings").insert({
+    const row: Record<string, unknown> = {
       user_id: user.id,
-      title: MEETING_TITLE,
+      title: title || "제목 없는 미팅",
       transcript,
       summary,
-    });
+    };
+
+    if (projectId) {
+      row.project_id = projectId;
+    }
+
+    const { error } = await supabase.from("meetings").insert(row);
 
     if (error) {
       console.error("[DB] 회의록 저장 실패:", error.message);
@@ -91,10 +123,32 @@ export default function TopBar() {
 
   return (
     <div className="h-16 bg-white border-b border-gray-200 px-4 md:px-6 flex items-center justify-between shrink-0">
-      {/* 좌측: 미팅 제목 */}
-      <h1 className="text-sm md:text-base font-bold text-gray-900 truncate max-w-[200px] md:max-w-xs">
-        A사 솔루션 도입 1차 미팅
-      </h1>
+      {/* 좌측: 미팅 제목 + 프로젝트 선택 */}
+      <div className="flex items-center gap-2 min-w-0 max-w-[45%]">
+        <input
+          type="text"
+          value={meetingTitle}
+          onChange={(e) => setMeetingTitle(e.target.value)}
+          placeholder="미팅 제목 입력..."
+          disabled={isRecording}
+          className="text-sm md:text-base font-bold text-gray-900 bg-transparent border-none outline-none placeholder-gray-400 truncate min-w-0 w-full disabled:opacity-70"
+        />
+        <select
+          value={selectedProjectId ?? ""}
+          onChange={(e) =>
+            setSelectedProjectId(e.target.value || null)
+          }
+          disabled={isRecording}
+          className="shrink-0 text-xs border border-gray-200 rounded-lg px-2 py-1.5 text-gray-600 bg-gray-50 outline-none focus:border-blue-400 disabled:opacity-50"
+        >
+          <option value="">폴더 없음</option>
+          {projects.map((p) => (
+            <option key={p.id} value={p.id}>
+              📁 {p.name}
+            </option>
+          ))}
+        </select>
+      </div>
 
       {/* 중앙: 타이머 + VAD 인디케이터 */}
       <div className="flex items-center gap-2.5">
