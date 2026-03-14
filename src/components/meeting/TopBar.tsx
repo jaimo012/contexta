@@ -1,9 +1,11 @@
 "use client";
 
 import { useMeetingStore } from "@/store/useMeetingStore";
+import { useAuthStore } from "@/store/useAuthStore";
 import { useAudioRecorder } from "@/hooks/useAudioRecorder";
 import { useMeetingTimer } from "@/hooks/useMeetingTimer";
 import { useAiHint } from "@/hooks/useAiHint";
+import { supabase } from "@/utils/supabaseClient";
 
 function formatTime(totalSeconds: number): string {
   const h = Math.floor(totalSeconds / 3600);
@@ -29,6 +31,7 @@ export default function TopBar() {
   const setMeetingEnded = useMeetingStore((s) => s.setMeetingEnded);
   const setIsGeneratingMinutes = useMeetingStore((s) => s.setIsGeneratingMinutes);
   const setFinalMinutes = useMeetingStore((s) => s.setFinalMinutes);
+  const setIsSavedToDb = useMeetingStore((s) => s.setIsSavedToDb);
 
   const handleStop = async () => {
     stopRecording();
@@ -49,14 +52,41 @@ export default function TopBar() {
       });
       const data = await res.json();
 
-      if (res.ok && data.minutes) {
-        setFinalMinutes(data.minutes);
-      }
+      if (!res.ok || !data.minutes) return;
+
+      setFinalMinutes(data.minutes);
+      await saveMeetingToDb(fullTranscript, data.minutes);
     } catch (err) {
       console.error("[SUMMARY] 회의록 생성 실패:", err);
     } finally {
       setIsGeneratingMinutes(false);
     }
+  };
+
+  const saveMeetingToDb = async (transcript: string, summary: string) => {
+    const user = useAuthStore.getState().user;
+    if (!user) {
+      console.error("[DB] 로그인된 사용자 정보가 없습니다.");
+      return;
+    }
+
+    const MEETING_TITLE = "A사 솔루션 도입 1차 미팅";
+
+    const { error } = await supabase.from("meetings").insert({
+      user_id: user.id,
+      title: MEETING_TITLE,
+      transcript,
+      summary,
+    });
+
+    if (error) {
+      console.error("[DB] 회의록 저장 실패:", error.message);
+      alert("회의록 DB 저장에 실패했습니다. 다시 시도해 주세요.");
+      return;
+    }
+
+    setIsSavedToDb(true);
+    alert("회의록이 안전하게 저장되었습니다!");
   };
 
   return (

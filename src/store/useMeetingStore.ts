@@ -24,6 +24,7 @@ interface MeetingState {
   isMeetingEnded: boolean;
   isGeneratingMinutes: boolean;
   finalMinutes: string;
+  isSavedToDb: boolean;
 }
 
 interface MeetingActions {
@@ -41,6 +42,7 @@ interface MeetingActions {
   setMeetingEnded: (value: boolean) => void;
   setIsGeneratingMinutes: (value: boolean) => void;
   setFinalMinutes: (value: string) => void;
+  setIsSavedToDb: (value: boolean) => void;
 }
 
 const INITIAL_STATE: MeetingState = {
@@ -55,6 +57,7 @@ const INITIAL_STATE: MeetingState = {
   isMeetingEnded: false,
   isGeneratingMinutes: false,
   finalMinutes: "",
+  isSavedToDb: false,
 };
 
 export const useMeetingStore = create<MeetingState & MeetingActions>(
@@ -79,5 +82,6 @@ export const useMeetingStore = create<MeetingState & MeetingActions>(
     setMeetingEnded: (value) => set({ isMeetingEnded: value }),
     setIsGeneratingMinutes: (value) => set({ isGeneratingMinutes: value }),
     setFinalMinutes: (value) => set({ finalMinutes: value }),
+    setIsSavedToDb: (value) => set({ isSavedToDb: value }),
   })
 );

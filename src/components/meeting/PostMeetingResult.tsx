@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import Markdown from "react-markdown";
 import { useMeetingStore } from "@/store/useMeetingStore";
 import { downloadAsTxt, copyToClipboard } from "@/utils/exportUtils";
@@ -8,6 +9,7 @@ export default function PostMeetingResult() {
   const isMeetingEnded = useMeetingStore((s) => s.isMeetingEnded);
   const isGeneratingMinutes = useMeetingStore((s) => s.isGeneratingMinutes);
   const finalMinutes = useMeetingStore((s) => s.finalMinutes);
+  const isSavedToDb = useMeetingStore((s) => s.isSavedToDb);
   const setMeetingEnded = useMeetingStore((s) => s.setMeetingEnded);
 
   if (!isMeetingEnded) return null;
@@ -57,19 +59,31 @@ export default function PostMeetingResult() {
 
         {/* 하단 액션 */}
         {!isGeneratingMinutes && finalMinutes && (
-          <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 shrink-0">
-            <button
-              onClick={() => copyToClipboard(finalMinutes)}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-            >
-              📋 클립보드 복사
-            </button>
-            <button
-              onClick={() => downloadAsTxt("회의록", finalMinutes)}
-              className="px-4 py-2 text-sm font-medium text-white bg-gray-900 rounded-lg hover:bg-gray-700 transition-colors"
-            >
-              📄 TXT 다운로드
-            </button>
+          <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200 shrink-0">
+            {isSavedToDb ? (
+              <Link
+                href="/dashboard"
+                className="px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
+              >
+                ← 대시보드로 돌아가기
+              </Link>
+            ) : (
+              <span className="text-xs text-gray-400">저장 중...</span>
+            )}
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => copyToClipboard(finalMinutes)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+              >
+                📋 클립보드 복사
+              </button>
+              <button
+                onClick={() => downloadAsTxt("회의록", finalMinutes)}
+                className="px-4 py-2 text-sm font-medium text-white bg-gray-900 rounded-lg hover:bg-gray-700 transition-colors"
+              >
+                📄 TXT 다운로드
+              </button>
+            </div>
           </div>
         )}
       </div>
