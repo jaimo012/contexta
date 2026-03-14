@@ -21,6 +21,9 @@ interface MeetingState {
   audioChunks: Blob[];
   transcripts: TranscriptEntry[];
   hints: HintEntry[];
+  isMeetingEnded: boolean;
+  isGeneratingMinutes: boolean;
+  finalMinutes: string;
 }
 
 interface MeetingActions {
@@ -35,6 +38,9 @@ interface MeetingActions {
   clearAudioChunks: () => void;
   addTranscript: (entry: TranscriptEntry) => void;
   addHint: (entry: HintEntry) => void;
+  setMeetingEnded: (value: boolean) => void;
+  setIsGeneratingMinutes: (value: boolean) => void;
+  setFinalMinutes: (value: string) => void;
 }
 
 const INITIAL_STATE: MeetingState = {
@@ -46,6 +52,9 @@ const INITIAL_STATE: MeetingState = {
   audioChunks: [],
   transcripts: [],
   hints: [],
+  isMeetingEnded: false,
+  isGeneratingMinutes: false,
+  finalMinutes: "",
 };
 
 export const useMeetingStore = create<MeetingState & MeetingActions>(
@@ -67,5 +76,8 @@ export const useMeetingStore = create<MeetingState & MeetingActions>(
       set((state) => ({ transcripts: [...state.transcripts, entry] })),
     addHint: (entry) =>
       set((state) => ({ hints: [...state.hints, entry] })),
+    setMeetingEnded: (value) => set({ isMeetingEnded: value }),
+    setIsGeneratingMinutes: (value) => set({ isGeneratingMinutes: value }),
+    setFinalMinutes: (value) => set({ finalMinutes: value }),
   })
 );

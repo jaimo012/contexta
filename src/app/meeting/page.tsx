@@ -7,6 +7,7 @@ import AiHint from "@/components/meeting/AiHint";
 import LiveNotepad from "@/components/meeting/LiveNotepad";
 import GlossaryCard from "@/components/meeting/GlossaryCard";
 import ClientModeOverlay from "@/components/meeting/ClientModeOverlay";
+import PostMeetingResult from "@/components/meeting/PostMeetingResult";
 import { useMeetingStore } from "@/store/useMeetingStore";
 
 export default function MeetingPage() {
@@ -38,6 +39,7 @@ export default function MeetingPage() {
   return (
     <div className="h-screen w-screen overflow-hidden bg-gray-50 flex flex-col">
       <ClientModeOverlay />
+      <PostMeetingResult />
       <TopBar />
       <div className="flex-1 flex flex-row w-full h-[calc(100vh-4rem)]">
         {/* 좌측 메인 영역 (70%) */}

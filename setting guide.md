@@ -70,3 +70,6 @@ Phase 4 완료 후 '데이터 영구 저장' 및 '회원가입' 기능을 붙일
   2. `Services` -> `AI Services` -> `CLOVA Speech` 검색 후 이용 신청
   3. Domain 생성 후 `Secret Key`와 `Invoke URL` 확보
 * **어디에:** `.env.local`의 `CLOVA_SPEECH_API_KEY=` 와 `CLOVA_SPEECH_SECRET=` 에 맞게 입력
+
+
+https://gemini.google.com/app/49c5aa276b998877

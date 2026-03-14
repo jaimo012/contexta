@@ -26,9 +26,37 @@ export default function TopBar() {
     startTimer();
   };
 
-  const handleStop = () => {
+  const setMeetingEnded = useMeetingStore((s) => s.setMeetingEnded);
+  const setIsGeneratingMinutes = useMeetingStore((s) => s.setIsGeneratingMinutes);
+  const setFinalMinutes = useMeetingStore((s) => s.setFinalMinutes);
+
+  const handleStop = async () => {
     stopRecording();
     stopTimer();
+    setMeetingEnded(true);
+
+    const { transcripts } = useMeetingStore.getState();
+    if (transcripts.length === 0) return;
+
+    const fullTranscript = transcripts.map((t) => t.text).join("\n");
+    setIsGeneratingMinutes(true);
+
+    try {
+      const res = await fetch("/api/summary", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fullTranscript }),
+      });
+      const data = await res.json();
+
+      if (res.ok && data.minutes) {
+        setFinalMinutes(data.minutes);
+      }
+    } catch (err) {
+      console.error("[SUMMARY] 회의록 생성 실패:", err);
+    } finally {
+      setIsGeneratingMinutes(false);
+    }
   };
 
   return (
