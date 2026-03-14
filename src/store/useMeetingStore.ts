@@ -4,6 +4,9 @@ interface MeetingState {
   isRecording: boolean;
   isClientMode: boolean;
   meetingTime: number;
+  isMicGranted: boolean;
+  isSpeaking: boolean;
+  audioChunks: Blob[];
 }
 
 interface MeetingActions {
@@ -12,12 +15,19 @@ interface MeetingActions {
   setMeetingTime: (value: number) => void;
   toggleClientMode: () => void;
   resetMeeting: () => void;
+  setMicGranted: (value: boolean) => void;
+  setIsSpeaking: (value: boolean) => void;
+  addAudioChunk: (chunk: Blob) => void;
+  clearAudioChunks: () => void;
 }
 
 const INITIAL_STATE: MeetingState = {
   isRecording: false,
   isClientMode: false,
   meetingTime: 0,
+  isMicGranted: false,
+  isSpeaking: false,
+  audioChunks: [],
 };
 
 export const useMeetingStore = create<MeetingState & MeetingActions>(
@@ -30,5 +40,10 @@ export const useMeetingStore = create<MeetingState & MeetingActions>(
     toggleClientMode: () =>
       set((state) => ({ isClientMode: !state.isClientMode })),
     resetMeeting: () => set(INITIAL_STATE),
+    setMicGranted: (value) => set({ isMicGranted: value }),
+    setIsSpeaking: (value) => set({ isSpeaking: value }),
+    addAudioChunk: (chunk) =>
+      set((state) => ({ audioChunks: [...state.audioChunks, chunk] })),
+    clearAudioChunks: () => set({ audioChunks: [] }),
   })
 );

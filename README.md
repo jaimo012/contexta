@@ -72,6 +72,8 @@ contexta/
 │   │       ├── GlossaryCard.tsx  # IT 용어 사전 카드
 │   │       └── ClientModeOverlay.tsx  # 위장 메모장 오버레이
 │   ├── hooks/                    # 커스텀 훅
+│   │   ├── useAudioRecorder.ts  # 마이크 녹음 + VAD 무음 커트
+│   │   └── useMeetingTimer.ts   # 미팅 경과 시간 카운터
 │   ├── store/                    # Zustand 글로벌 상태 관리
 │   │   └── useMeetingStore.ts    # 미팅 상태 (녹음, 클라이언트 모드, 타이머)
 │   ├── lib/                      # 라이브러리 설정
@@ -163,13 +165,38 @@ npm run dev
 | GlossaryCard | `components/meeting/GlossaryCard.tsx` | IT 용어 사전 카드 |
 | ClientModeOverlay | `components/meeting/ClientModeOverlay.tsx` | 위장 메모장 (보안 핵심) |
 
-### Phase 2: 실시간 미팅 코어 (예정)
+### Phase 2: 브라우저 마이크 제어 및 VAD 연동 완료 ✅
 
-- [ ] 마이크 녹음 및 오디오 스트리밍
-- [ ] Deepgram STT 실시간 연동
-- [ ] Claude Haiku 실시간 힌트 생성
-- [ ] 온디맨드 힌트 버튼 동작 연결
-- [ ] 녹음 시작/종료 버튼 동작 연결 + 타이머 실시간 카운트
+브라우저 Web Audio API를 활용하여 마이크 녹음, 실시간 음성 활성 감지(VAD), 무음 구간 자동 폐기 파이프라인을 구축했습니다.
+
+- [x] **Zustand 오디오 상태 확장** — `isMicGranted`, `isSpeaking`, `audioChunks` 3개 상태 + `setMicGranted`, `setIsSpeaking`, `addAudioChunk`, `clearAudioChunks` 4개 액션 추가
+- [x] **useAudioRecorder 훅** — 마이크 권한 획득(`getUserMedia`), MediaRecorder 1초 단위 청크 수집, 권한 거부 시 사용자 알림 처리
+- [x] **AnalyserNode 실시간 음성 분석** — `AudioContext` → `createMediaStreamSource` → `createAnalyser(fftSize: 512)` 파이프라인, 스피커 출력 연결 없음 (하울링 방지)
+- [x] **VAD 볼륨 쓰레시홀드 로직** — `requestAnimationFrame` 루프로 매 프레임 주파수 데이터 분석, 평균 볼륨 18 이상 → `isSpeaking: true`, 1.5초 이상 무음 지속 → `isSpeaking: false` (디바운스)
+- [x] **무음 구간 데이터 폐기** — `ondataavailable` 콜백에서 `isSpeaking` 상태를 `getState()`로 실시간 조회, 음성 구간만 `audioChunks`에 저장 (침묵 시 Blob 버림)
+- [x] **useMeetingTimer 훅** — `setInterval` 기반 1초 카운터, `startTimer`/`stopTimer`/`resetTimer` 3개 컨트롤, 언마운트 시 `clearInterval` 메모리 릭 방지
+- [x] **TopBar 버튼 기능 연결** — [녹음 시작] 클릭 시 `startRecording()` + `startTimer()` 동시 실행, [녹음 종료] 시 양쪽 모두 정지, 타이머 `00:00:00` 실시간 카운트
+- [x] **VAD 인디케이터** — 타이머 옆 초록색 점(pulse), 음성 감지 시 깜빡임 / 무음 시 회색 정지
+- [x] **리소스 클린업** — `stopRecording` 시 MediaRecorder 종료 → 마이크 트랙 전체 해제 → AudioContext 닫기 → rAF 루프 취소 → 모든 ref 초기화
+
+#### 오디오 파이프라인 구조
+
+```
+마이크 → getUserMedia(stream)
+         ├→ MediaRecorder.start(1000) → ondataavailable → [isSpeaking?] → audioChunks[]
+         └→ AudioContext
+              └→ MediaStreamSource → AnalyserNode(fftSize:512)
+                                      └→ rAF loop → getByteFrequencyData → 평균 볼륨 계산
+                                                     ├→ >= 18 → isSpeaking: true
+                                                     └→ < 18 (1.5s 지속) → isSpeaking: false
+```
+
+#### 생성된 훅 목록
+
+| 훅 | 경로 | 역할 |
+|----|------|------|
+| useAudioRecorder | `hooks/useAudioRecorder.ts` | 마이크 녹음 + AnalyserNode + VAD 무음 커트 |
+| useMeetingTimer | `hooks/useMeetingTimer.ts` | 미팅 경과 시간 1초 카운터 |
 
 ### Phase 3: 미팅 종료 후 기능 (예정)
 
