@@ -2,6 +2,7 @@
 
 import { useRef, useCallback, useEffect } from "react";
 import { useMeetingStore } from "@/store/useMeetingStore";
+import { apiUrl } from "@/utils/apiUrl";
 
 const SILENCE_AUTO_HINT_MS = 3000;
 const INTERVAL_AUTO_HINT_MS = 5 * 60 * 1000;
@@ -26,7 +27,7 @@ export function useAiHint() {
     isFetchingRef.current = true;
 
     try {
-      const res = await fetch("/api/hint", {
+      const res = await fetch(apiUrl("/api/hint"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ transcripts: combined }),
@@ -36,7 +37,9 @@ export function useAiHint() {
 
       if (res.ok && data.hint && data.hint.trim() !== "") {
         addHint({
-          id: crypto.randomUUID(),
+          id: typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+            ? crypto.randomUUID()
+            : `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
           text: data.hint,
           timestamp: Date.now(),
         });

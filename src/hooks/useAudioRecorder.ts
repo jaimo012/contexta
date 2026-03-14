@@ -2,9 +2,44 @@
 
 import { useRef, useCallback } from "react";
 import { useMeetingStore } from "@/store/useMeetingStore";
+import { apiUrl } from "@/utils/apiUrl";
 
 const VOLUME_THRESHOLD = 18;
 const SILENCE_DEBOUNCE_MS = 1500;
+
+const AudioContextCompat =
+  typeof window !== "undefined"
+    ? window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
+    : null;
+
+function getSupportedMimeType(): string {
+  if (typeof MediaRecorder === "undefined") return "";
+  const candidates = [
+    "audio/webm;codecs=opus",
+    "audio/webm",
+    "audio/mp4",
+    "audio/aac",
+    "audio/ogg;codecs=opus",
+  ];
+  for (const mime of candidates) {
+    if (MediaRecorder.isTypeSupported(mime)) return mime;
+  }
+  return "";
+}
+
+function generateId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+}
+
+function getChunkExtension(mimeType: string): string {
+  if (mimeType.includes("webm")) return "webm";
+  if (mimeType.includes("mp4") || mimeType.includes("aac")) return "mp4";
+  if (mimeType.includes("ogg")) return "ogg";
+  return "bin";
+}
 
 export function useAudioRecorder() {
   const streamRef = useRef<MediaStream | null>(null);
@@ -14,6 +49,7 @@ export function useAudioRecorder() {
   const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const rafIdRef = useRef<number | null>(null);
   const lastSpeakTimeRef = useRef<number>(0);
+  const mimeTypeRef = useRef<string>("");
 
   const isSendingRef = useRef(false);
 
@@ -61,19 +97,20 @@ export function useAudioRecorder() {
     isSendingRef.current = true;
 
     try {
+      const ext = getChunkExtension(mimeTypeRef.current);
       const formData = new FormData();
-      formData.append("audio", chunk, "chunk.webm");
+      formData.append("audio", chunk, `chunk.${ext}`);
 
-      const res = await fetch("/api/stt", { method: "POST", body: formData });
+      const res = await fetch(apiUrl("/api/stt"), { method: "POST", body: formData });
       const data = await res.json();
 
       if (res.ok && data.text && data.text.trim() !== "") {
         addTranscript({
-          id: crypto.randomUUID(),
+          id: generateId(),
           text: data.text,
           timestamp: Date.now(),
         });
-        console.log(`[STT] 📝 "${data.text}"`);
+        console.log(`[STT] "${data.text}"`);
       }
     } catch (err) {
       console.error("[STT] 전송 실패:", err);
@@ -83,13 +120,22 @@ export function useAudioRecorder() {
   }, [addTranscript]);
 
   const startRecording = useCallback(async () => {
+    if (!AudioContextCompat) {
+      alert("이 환경에서는 오디오 기능을 지원하지 않습니다.");
+      return;
+    }
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
       setMicGranted(true);
 
-      const audioContext = new AudioContext();
+      const audioContext = new AudioContextCompat();
       audioContextRef.current = audioContext;
+
+      if (audioContext.state === "suspended") {
+        await audioContext.resume();
+      }
 
       const source = audioContext.createMediaStreamSource(stream);
       sourceRef.current = source;
@@ -102,7 +148,15 @@ export function useAudioRecorder() {
 
       detectSound();
 
-      const recorder = new MediaRecorder(stream);
+      const mimeType = getSupportedMimeType();
+      mimeTypeRef.current = mimeType;
+
+      const recorderOptions: MediaRecorderOptions = {};
+      if (mimeType) {
+        recorderOptions.mimeType = mimeType;
+      }
+
+      const recorder = new MediaRecorder(stream, recorderOptions);
       recorderRef.current = recorder;
 
       recorder.ondataavailable = (e) => {
@@ -119,7 +173,7 @@ export function useAudioRecorder() {
     } catch (err) {
       console.error("마이크 권한 요청 실패:", err);
       setMicGranted(false);
-      alert("마이크 권한이 필요합니다");
+      alert("마이크 권한이 필요합니다. 설정에서 마이크 접근을 허용해 주세요.");
     }
   }, [setMicGranted, setIsRecording, addAudioChunk, clearAudioChunks, detectSound, sendChunkToSTT]);
 
@@ -146,6 +200,7 @@ export function useAudioRecorder() {
     sourceRef.current = null;
     analyserRef.current = null;
     recorderRef.current = null;
+    mimeTypeRef.current = "";
     setIsRecording(false);
     setIsSpeaking(false);
   }, [setIsRecording, setIsSpeaking]);

@@ -41,9 +41,9 @@ export default function MeetingPage() {
       <ClientModeOverlay />
       <PostMeetingResult />
       <TopBar />
-      <div className="flex-1 flex flex-row w-full h-[calc(100vh-4rem)]">
-        {/* 좌측 메인 영역 (70%) */}
-        <section className="w-[70%] h-full border-r bg-white p-6 overflow-y-auto">
+      <div className="flex-1 flex flex-col md:flex-row w-full overflow-hidden">
+        {/* 좌측 메인 영역 (모바일: 전체, PC: 70%) */}
+        <section className="w-full md:w-[70%] h-1/2 md:h-full border-b md:border-b-0 md:border-r bg-white p-4 md:p-6 overflow-y-auto overscroll-none">
           {!hasContent && (
             <div className="flex items-center justify-center h-full">
               <p className="text-gray-400 text-sm">
@@ -75,8 +75,8 @@ export default function MeetingPage() {
           <div ref={bottomRef} />
         </section>
 
-        {/* 우측 사이드 영역 (30%) */}
-        <aside className="w-[30%] h-full bg-gray-50 p-6 flex flex-col gap-4">
+        {/* 우측 사이드 영역 (모바일: 전체, PC: 30%) */}
+        <aside className="w-full md:w-[30%] h-1/2 md:h-full bg-gray-50 p-4 md:p-6 flex flex-col gap-4 overflow-y-auto overscroll-none">
           <LiveNotepad />
           <div className="flex flex-col gap-2 overflow-y-auto">
             <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">

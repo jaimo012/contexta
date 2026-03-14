@@ -7,6 +7,7 @@ import { useAudioRecorder } from "@/hooks/useAudioRecorder";
 import { useMeetingTimer } from "@/hooks/useMeetingTimer";
 import { useAiHint } from "@/hooks/useAiHint";
 import { supabase } from "@/utils/supabaseClient";
+import { apiUrl } from "@/utils/apiUrl";
 
 interface Project {
   id: string;
@@ -70,7 +71,7 @@ export default function TopBar() {
     setIsGeneratingMinutes(true);
 
     try {
-      const res = await fetch("/api/summary", {
+      const res = await fetch(apiUrl("/api/summary"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ fullTranscript }),
