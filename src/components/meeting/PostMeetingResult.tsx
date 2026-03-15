@@ -49,10 +49,32 @@ export default function PostMeetingResult() {
               <Markdown>{finalMinutes}</Markdown>
             </article>
           ) : (
-            <div className="flex items-center justify-center py-20">
-              <p className="text-sm text-gray-400">
-                생성된 회의록이 없습니다.
-              </p>
+            <div className="flex flex-col items-center justify-center gap-4 py-16">
+              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gray-100">
+                <span className="text-2xl">🎙️</span>
+              </div>
+              <div className="text-center">
+                <p className="text-sm font-medium text-gray-600">
+                  수집된 대화가 없어 회의록을 생성할 수 없습니다
+                </p>
+                <p className="mt-1 text-xs text-gray-400">
+                  녹음 중 마이크에 대고 말씀해 주세요. 음성이 감지되어야 텍스트가 수집됩니다.
+                </p>
+              </div>
+              <div className="flex items-center gap-3 mt-2">
+                <button
+                  onClick={() => setMeetingEnded(false)}
+                  className="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                >
+                  닫고 다시 녹음하기
+                </button>
+                <Link
+                  href="/dashboard"
+                  className="px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
+                >
+                  대시보드로 이동
+                </Link>
+              </div>
             </div>
           )}
         </div>
