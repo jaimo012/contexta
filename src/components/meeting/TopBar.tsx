@@ -32,7 +32,7 @@ export default function TopBar() {
   const setSelectedProjectId = useMeetingStore((s) => s.setSelectedProjectId);
 
   const { startRecording, stopRecording } = useAudioRecorder();
-  const { startTimer, stopTimer } = useMeetingTimer();
+  const { startTimer, stopTimer } = useMeetingTimer(stopRecording);
   const { fetchHint } = useAiHint();
 
   const [projects, setProjects] = useState<Project[]>([]);
@@ -53,9 +53,12 @@ export default function TopBar() {
     fetchProjects();
   }, [fetchProjects]);
 
-  const handleStart = () => {
-    startRecording();
-    startTimer();
+  const handleStart = async () => {
+    await startRecording();
+    const granted = useMeetingStore.getState().isRecording;
+    if (granted) {
+      startTimer();
+    }
   };
 
   const setMeetingEnded = useMeetingStore((s) => s.setMeetingEnded);

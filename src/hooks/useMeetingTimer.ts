@@ -33,7 +33,7 @@ async function tryDirectUpdate(userId: string, delta: number): Promise<boolean> 
   return !updateError;
 }
 
-export function useMeetingTimer() {
+export function useMeetingTimer(onForceStop?: () => void) {
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pendingSecondsRef = useRef(0);
   const userLimitRef = useRef<number | null>(null);
@@ -132,7 +132,7 @@ export function useMeetingTimer() {
       ) {
         const { isRecording } = useMeetingStore.getState();
         if (isRecording) {
-          useMeetingStore.getState().setIsRecording(false);
+          onForceStop?.();
           stopTimer();
           alert(
             "사용 시간이 만료되었습니다. 내 사전에 단어를 등록하면 시간이 늘어납니다!"
