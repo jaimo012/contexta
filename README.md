@@ -499,39 +499,30 @@ Phase 7 이후 로컬 테스트 중 발견된 2건의 크리티컬 버그를 수
 | `app/layout.tsx` | `AuthGuard` 래핑 추가 |
 | `app/(auth)/login/page.tsx` | OAuth redirectTo URL 개선 |
 
-#### Bug 2: `increment_used_seconds` RPC 함수 미등록
+#### Bug 2: `increment_used_seconds` RPC 함수 미등록 + DB 스키마 미적용
 
-- **증상**: 녹음 종료 시 `Could not find the function public.increment_used_seconds(delta, uid) in the schema cache` 에러
-- **원인**: `database/schema.sql`에 함수가 정의되어 있으나 **Supabase DB에 실제로 실행되지 않은 상태**
-- **수정**:
-  - `useMeetingTimer.ts`에 **2단계 폴백 전략** 적용: RPC 실패 시 직접 `SELECT` → `UPDATE` 쿼리로 자동 대체
-  - `fetchUserQuota`에 `try-catch` + `nullish coalescing` 방어 처리 추가
+- **증상**: 녹음 종료 시 `Could not find the function public.increment_used_seconds(delta, uid)` 에러, 폴백 UPDATE도 실패
+- **원인**: `database/schema.sql`이 Supabase DB에 한 번도 실행되지 않은 상태 → `public.users` 테이블, RPC 함수, 트리거 모두 미존재
+- **수정 (코드 3건)**:
+  - `useMeetingTimer.ts`: **서킷 브레이커 패턴** 적용 — RPC → 직접 UPDATE → 3회 연속 실패 시 DB 동기화 자동 비활성화 (콘솔 에러 반복 차단)
+  - `AuthProvider.tsx`: `ensurePublicUserRow()` 함수 추가 — 로그인 시 `public.users` 행이 없으면 자동 `upsert`
+  - `schema.sql`: `handle_new_user()` 트리거 추가 — 향후 신규 가입 시 `auth.users` → `public.users` 자동 생성
 
 | 파일 | 변경 내용 |
 |------|----------|
-| `hooks/useMeetingTimer.ts` | RPC 폴백 로직 + fetchUserQuota 방어 강화 |
+| `hooks/useMeetingTimer.ts` | 서킷 브레이커 (3회 실패 시 비활성화) + 함수 분리 |
+| `components/providers/AuthProvider.tsx` | `ensurePublicUserRow` upsert 로직 추가 |
+| `database/schema.sql` | `handle_new_user` 트리거 함수 추가 |
 
-#### Supabase DB에서 실행 필요한 SQL
+#### Supabase DB 초기 설정 (필수)
 
-아래 SQL을 **Supabase Dashboard > SQL Editor**에서 실행하면 RPC 함수가 정상 등록됩니다:
+**Supabase Dashboard > SQL Editor**에서 `database/schema.sql` 파일 전체를 실행해 주세요. 주요 생성 항목:
 
-```sql
--- users 테이블에 시간 제한 컬럼 추가 (이미 있으면 무시)
-ALTER TABLE public.users
-  ADD COLUMN IF NOT EXISTS used_seconds  integer NOT NULL DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS limit_seconds integer NOT NULL DEFAULT 3600;
-
--- 원자적 시간 증가 RPC 함수
-CREATE OR REPLACE FUNCTION public.increment_used_seconds(uid uuid, delta integer)
-RETURNS void
-LANGUAGE sql
-SECURITY DEFINER
-AS $$
-  UPDATE public.users
-  SET used_seconds = used_seconds + delta
-  WHERE id = uid;
-$$;
-```
+- `public.users` 테이블 + `used_seconds` / `limit_seconds` 컬럼
+- `public.meetings`, `public.projects`, `public.custom_words` 테이블
+- `handle_new_user()` 트리거 (구글 로그인 시 public.users 자동 행 생성)
+- `increment_used_seconds()` RPC 함수 (사용 시간 원자적 증가)
+- 전 테이블 RLS 정책 (사용자별 데이터 격리)
 
 ---
 

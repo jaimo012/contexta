@@ -6,22 +6,31 @@ import { useAuthStore } from "@/store/useAuthStore";
 import { supabase } from "@/utils/supabaseClient";
 
 const DB_SYNC_INTERVAL_SEC = 30;
+const MAX_SYNC_FAILURES = 3;
 
-async function fallbackDirectUpdate(userId: string, delta: number): Promise<boolean> {
-  const { data } = await supabase
+async function tryRpcUpdate(userId: string, delta: number): Promise<boolean> {
+  const { error } = await supabase.rpc("increment_used_seconds", {
+    uid: userId,
+    delta,
+  });
+  return !error;
+}
+
+async function tryDirectUpdate(userId: string, delta: number): Promise<boolean> {
+  const { data, error: selectError } = await supabase
     .from("users")
     .select("used_seconds")
     .eq("id", userId)
     .single();
 
-  if (!data) return false;
+  if (selectError || !data) return false;
 
-  const { error } = await supabase
+  const { error: updateError } = await supabase
     .from("users")
     .update({ used_seconds: data.used_seconds + delta })
     .eq("id", userId);
 
-  return !error;
+  return !updateError;
 }
 
 export function useMeetingTimer() {
@@ -29,10 +38,14 @@ export function useMeetingTimer() {
   const pendingSecondsRef = useRef(0);
   const userLimitRef = useRef<number | null>(null);
   const userUsedRef = useRef<number>(0);
+  const syncFailCountRef = useRef(0);
+  const dbSyncEnabledRef = useRef(true);
 
   const setMeetingTime = useMeetingStore((s) => s.setMeetingTime);
 
   const syncToDb = useCallback(async () => {
+    if (!dbSyncEnabledRef.current) return;
+
     const seconds = pendingSecondsRef.current;
     if (seconds === 0) return;
 
@@ -41,22 +54,34 @@ export function useMeetingTimer() {
 
     pendingSecondsRef.current = 0;
 
-    const { error: rpcError } = await supabase.rpc("increment_used_seconds", {
-      uid: user.id,
-      delta: seconds,
-    });
+    const rpcOk = await tryRpcUpdate(user.id, seconds);
+    if (rpcOk) {
+      syncFailCountRef.current = 0;
+      return;
+    }
 
-    if (rpcError) {
-      console.warn("[TIMER] RPC 실패, 직접 UPDATE 폴백 시도:", rpcError.message);
-      const ok = await fallbackDirectUpdate(user.id, seconds);
-      if (!ok) {
-        pendingSecondsRef.current += seconds;
-        console.error("[TIMER] 폴백 UPDATE도 실패, 다음 동기화에 재시도");
-      }
+    const directOk = await tryDirectUpdate(user.id, seconds);
+    if (directOk) {
+      syncFailCountRef.current = 0;
+      return;
+    }
+
+    syncFailCountRef.current += 1;
+    pendingSecondsRef.current += seconds;
+
+    if (syncFailCountRef.current >= MAX_SYNC_FAILURES) {
+      dbSyncEnabledRef.current = false;
+      console.warn(
+        "[TIMER] DB 동기화 %d회 연속 실패 — 사용 시간 동기화를 비활성화합니다. " +
+        "Supabase SQL Editor에서 schema.sql을 실행해 주세요.",
+        MAX_SYNC_FAILURES
+      );
     }
   }, []);
 
   const fetchUserQuota = useCallback(async () => {
+    if (!dbSyncEnabledRef.current) return;
+
     const user = useAuthStore.getState().user;
     if (!user) return;
 
@@ -68,7 +93,7 @@ export function useMeetingTimer() {
         .single();
 
       if (error) {
-        console.warn("[TIMER] 사용 시간 조회 실패:", error.message);
+        console.warn("[TIMER] 사용 시간 조회 실패 (DB 미설정 가능):", error.message);
         return;
       }
 
