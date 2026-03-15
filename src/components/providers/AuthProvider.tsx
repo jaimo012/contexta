@@ -37,33 +37,38 @@ export default function AuthProvider({
   const ensuredRef = useRef(false);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    const syncSession = (session: { user: User | null } | null) => {
       const user = session?.user ?? null;
       setUser(user);
       setIsLoading(false);
-
       if (user && !ensuredRef.current) {
         ensuredRef.current = true;
         ensurePublicUserRow(user).catch(() => {});
       }
+      if (!user) ensuredRef.current = false;
+    };
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      syncSession(session);
     });
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      const user = session?.user ?? null;
-      setUser(user);
-
-      if (user && !ensuredRef.current) {
-        ensuredRef.current = true;
-        ensurePublicUserRow(user).catch(() => {});
-      }
-      if (!user) {
-        ensuredRef.current = false;
-      }
+      syncSession(session);
     });
 
-    return () => subscription.unsubscribe();
+    const handleStorage = () => {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        syncSession(session);
+      });
+    };
+    window.addEventListener("storage", handleStorage);
+
+    return () => {
+      subscription.unsubscribe();
+      window.removeEventListener("storage", handleStorage);
+    };
   }, [setUser, setIsLoading]);
 
   return <>{children}</>;

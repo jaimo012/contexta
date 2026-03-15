@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import Markdown from "react-markdown";
 import { useMeetingStore } from "@/store/useMeetingStore";
@@ -11,6 +12,16 @@ export default function PostMeetingResult() {
   const finalMinutes = useMeetingStore((s) => s.finalMinutes);
   const isSavedToDb = useMeetingStore((s) => s.isSavedToDb);
   const setMeetingEnded = useMeetingStore((s) => s.setMeetingEnded);
+
+  useEffect(() => {
+    if (!isGeneratingMinutes) return;
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [isGeneratingMinutes]);
 
   if (!isMeetingEnded) return null;
 

@@ -4,6 +4,8 @@ import { createServerClient } from "@supabase/ssr";
 
 const KEYWORD_BOOST = 2;
 const KEYWORD_CACHE_TTL_MS = 60_000;
+const MAX_KEYWORDS = 50;
+const MAX_KEYWORD_LENGTH = 80;
 
 interface CacheEntry {
   keywords: string[];
@@ -52,9 +54,11 @@ async function getUserKeywords(
       return [];
     }
 
-    const keywords = (data ?? []).map(
-      (row: { word: string }) => `${row.word}:${KEYWORD_BOOST}`
+    const raw = (data ?? []).map(
+      (row: { word: string }) =>
+        `${String(row.word).slice(0, MAX_KEYWORD_LENGTH)}:${KEYWORD_BOOST}`
     );
+    const keywords = raw.slice(0, MAX_KEYWORDS);
 
     keywordCache.set(user.id, {
       keywords,

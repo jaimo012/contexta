@@ -6,6 +6,7 @@ import { apiUrl } from "@/utils/apiUrl";
 
 const SILENCE_AUTO_HINT_MS = 3000;
 const INTERVAL_AUTO_HINT_MS = 5 * 60 * 1000;
+const HINT_FETCH_TIMEOUT_MS = 25_000;
 
 export function useAiHint() {
   const isFetchingRef = useRef(false);
@@ -27,12 +28,17 @@ export function useAiHint() {
     isFetchingRef.current = true;
 
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), HINT_FETCH_TIMEOUT_MS);
+
       const res = await fetch(apiUrl("/api/hint"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ transcripts: combined }),
+        signal: controller.signal,
       });
 
+      clearTimeout(timeoutId);
       const data = await res.json();
 
       if (res.ok && data.hint && data.hint.trim() !== "") {
@@ -47,7 +53,11 @@ export function useAiHint() {
         console.log(`[HINT] 💡 "${data.hint}"`);
       }
     } catch (err) {
-      console.error("[HINT] 힌트 요청 실패:", err);
+      if (err instanceof Error && err.name === "AbortError") {
+        console.warn("[HINT] 힌트 요청 타임아웃");
+      } else {
+        console.error("[HINT] 힌트 요청 실패:", err);
+      }
     } finally {
       isFetchingRef.current = false;
     }

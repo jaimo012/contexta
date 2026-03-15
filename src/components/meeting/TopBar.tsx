@@ -36,6 +36,7 @@ export default function TopBar() {
   const { fetchHint } = useAiHint();
 
   const [projects, setProjects] = useState<Project[]>([]);
+  const [isStartingRecording, setIsStartingRecording] = useState(false);
 
   const fetchProjects = useCallback(async () => {
     const { data, error } = await supabase
@@ -54,10 +55,14 @@ export default function TopBar() {
   }, [fetchProjects]);
 
   const handleStart = async () => {
-    await startRecording();
-    const granted = useMeetingStore.getState().isRecording;
-    if (granted) {
-      startTimer();
+    if (isStartingRecording) return;
+    setIsStartingRecording(true);
+    try {
+      await startRecording();
+      const granted = useMeetingStore.getState().isRecording;
+      if (granted) startTimer();
+    } finally {
+      setIsStartingRecording(false);
     }
   };
 
@@ -191,13 +196,14 @@ export default function TopBar() {
         </button>
         <button
           onClick={isRecording ? handleStop : handleStart}
-          className={`px-3 md:px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+          disabled={isStartingRecording}
+          className={`px-3 md:px-4 py-2 text-sm font-medium rounded-lg transition-colors disabled:opacity-60 disabled:cursor-not-allowed ${
             isRecording
               ? "text-white bg-gray-700 hover:bg-gray-800"
               : "text-white bg-red-500 hover:bg-red-600"
           }`}
         >
-          {isRecording ? "⏹ 녹음 종료" : "🔴 녹음 시작"}
+          {isStartingRecording ? "시작 중..." : isRecording ? "⏹ 녹음 종료" : "🔴 녹음 시작"}
         </button>
       </div>
     </div>

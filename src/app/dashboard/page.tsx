@@ -137,6 +137,23 @@ export default function DashboardPage() {
     router.push("/login");
   };
 
+  const handleDeleteProject = async (projectId: string, projectName: string) => {
+    if (
+      !confirm(
+        `"${projectName}" 프로젝트를 삭제할까요? 연결된 미팅은 '폴더 없음'으로 유지됩니다.`
+      )
+    )
+      return;
+    const { error } = await supabase.from("projects").delete().eq("id", projectId);
+    if (error) {
+      console.warn("[DB] 프로젝트 삭제 실패:", error.message);
+      alert("프로젝트 삭제에 실패했습니다.");
+      return;
+    }
+    await fetchProjects();
+    await fetchMeetings();
+  };
+
   const getProjectName = (projectId: string | null): string | null => {
     if (!projectId) return null;
     return projects.find((p) => p.id === projectId)?.name ?? null;
@@ -308,7 +325,19 @@ export default function DashboardPage() {
                   key={project.id}
                   className="inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-3 py-1.5 text-sm font-medium text-blue-700"
                 >
-                  📁 {project.name}
+                  <span className="max-w-[120px] truncate" title={project.name}>
+                    📁 {project.name}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteProject(project.id, project.name)}
+                    className="ml-0.5 rounded-full p-0.5 text-blue-500 hover:bg-blue-200 hover:text-blue-800 transition-colors"
+                    title="프로젝트 삭제"
+                    aria-label="프로젝트 삭제"
+                  >
+                    <span className="sr-only">삭제</span>
+                    <span aria-hidden>×</span>
+                  </button>
                 </span>
               ))}
             </div>
