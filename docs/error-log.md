@@ -33,13 +33,16 @@
 - `increment_used_seconds()` RPC 함수
 - 전 테이블 RLS 정책
 
-### 코드 측 방어 처리
+### 코드 측 방어 처리 (전수 조사 완료)
 
-| 파일 | 방어 방식 |
-|------|----------|
-| `useMeetingTimer.ts` | 서킷 브레이커 — RPC → 직접 UPDATE → 3회 연속 실패 시 DB 동기화 비활성화 |
-| `AuthProvider.tsx` | `ensurePublicUserRow()` — 로그인 시 public.users 행 자동 upsert |
-| `dashboard/page.tsx` | 각 fetch 함수에 try-catch + DB 미설정 시 안내 배너 표시 |
+| 파일 | 방어 방식 | 상태 |
+|------|----------|------|
+| `useMeetingTimer.ts` | 서킷 브레이커 — RPC → 직접 UPDATE → 3회 연속 실패 시 DB 동기화 비활성화 | ✅ |
+| `AuthProvider.tsx` | `ensurePublicUserRow()` — 로그인 시 public.users 행 자동 upsert | ✅ |
+| `dashboard/page.tsx` | 각 fetch에 error 체크 + `dbReady` 상태 → 미설정 시 안내 배너 | ✅ |
+| `settings/dictionary/page.tsx` | fetchWords error 체크 + `dbReady` 상태 → 미설정 시 안내 배너, CRUD alert 개선 | ✅ |
+| `TopBar.tsx` | fetchProjects error 체크 + warn 로그, saveMeetingToDb alert에 schema.sql 안내 포함 | ✅ |
+| `api/stt/route.ts` | getUserKeywords 전체 try-catch 래핑, custom_words 조회 실패 시 빈 키워드 폴백 | ✅ |
 
 ---
 
@@ -101,3 +104,48 @@
 | 파일 | 변경 |
 |------|------|
 | `dashboard/page.tsx` | 각 fetch에 try-catch + `dbReady` 상태 → 미설정 시 안내 배너 표시 |
+
+---
+
+## [예방] 전수 조사 — DB 미설정 시 에러 일괄 방어
+
+> **상태**: ✅ 수정 완료
+> **근거**: Hotfix #3과 동일한 패턴이 다른 파일에도 존재함을 확인
+
+### 조사 범위
+
+Supabase `.from()`, `.rpc()`, `.auth` 를 호출하는 **모든 파일**을 대상으로 DB 테이블/함수 미존재 시 에러가 전파되는지 검사.
+
+### 조사 결과 (전체 파일 목록)
+
+| 파일 | Supabase 호출 | 방어 상태 |
+|------|-------------|----------|
+| `useMeetingTimer.ts` | `.rpc()`, `.from("users")` | ✅ 기존 방어 완료 (서킷 브레이커) |
+| `AuthProvider.tsx` | `.from("users")`, `.auth` | ✅ 기존 방어 완료 (ensurePublicUserRow catch) |
+| `dashboard/page.tsx` | `.from("projects/meetings/users/custom_words")` | ✅ 기존 방어 완료 (dbReady 배너) |
+| `settings/dictionary/page.tsx` | `.from("custom_words")` CRUD | ⚠️ → ✅ **이번에 수정** |
+| `TopBar.tsx` | `.from("projects")`, `.from("meetings")` | ⚠️ → ✅ **이번에 수정** |
+| `api/stt/route.ts` | `.from("custom_words")`, `.auth.getUser()` | ⚠️ → ✅ **이번에 수정** |
+| `useAiHint.ts` | fetch API 호출만 (Supabase 직접 사용 없음) | ✅ try-catch 존재 |
+| `useAudioRecorder.ts` | fetch API 호출만 (Supabase 직접 사용 없음) | ✅ try-catch 존재 |
+| `login/page.tsx` | `.auth.signInWithOAuth` | ✅ error 체크 + alert 존재 |
+
+### 수정 내역
+
+| 파일 | 취약 지점 | 수정 내용 |
+|------|----------|----------|
+| `settings/dictionary/page.tsx` | `fetchWords` — error 미체크 | error 시 `dbReady(false)` + 안내 배너 표시 |
+| `settings/dictionary/page.tsx` | `handleAdd` — alert 불명확 | schema.sql 실행 안내 문구 포함 |
+| `settings/dictionary/page.tsx` | `handleDelete/Update` — alert 불명확 | DB 연결 확인 안내로 개선 |
+| `TopBar.tsx` | `fetchProjects` — error 미체크 | error 시 warn 로그 + 조기 리턴 (프로젝트 드롭다운 비움) |
+| `TopBar.tsx` | `saveMeetingToDb` — alert 불명확 | schema.sql 안내 + TXT/클립보드 대안 안내 |
+| `api/stt/route.ts` | `getUserKeywords` — 예외 전파 위험 | 전체 try-catch + warn 로그 + 빈 배열 폴백 |
+| `api/stt/route.ts` | `custom_words` select — error 미체크 | error 시 warn + 빈 배열 리턴 (STT 자체는 정상 동작) |
+
+### 방어 원칙 정리
+
+1. **Supabase `.from()` 쿼리는 반드시 `{ data, error }` 구조분해**하고 error를 체크할 것
+2. **DB 조회 실패가 핵심 기능을 중단시키지 않도록** 폴백 처리 (빈 배열, 기본값)
+3. **사용자가 원인을 알 수 있도록** alert에 `schema.sql 실행` 안내를 포함할 것
+4. **서버 API Route에서는 try-catch로 감싸** 500 에러 대신 graceful degradation
+5. **UI 페이지에는 `dbReady` 상태를 두어** 안내 배너를 표시할 것

@@ -490,6 +490,7 @@ Phase 7 이후 로컬 테스트 중 발견된 버그들을 수정했습니다.
 | DB 스키마 미적용 방어 처리 (서킷 브레이커 + 폴백) | ✅ |
 | 회의록 빈 상태 UX 안내 화면 | ✅ |
 | 대시보드 DB 미설정 안내 배너 | ✅ |
+| 전수 조사 — 사전/TopBar/STT API 에러 방어 일괄 적용 | ✅ |
 
 > **⚠️ 필수**: Supabase Dashboard > SQL Editor에서 `database/schema.sql`을 실행해야 DB 관련 기능이 정상 작동합니다.
 

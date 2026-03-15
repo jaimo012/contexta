@@ -30,32 +30,42 @@ function buildSupabaseClient(request: NextRequest) {
 async function getUserKeywords(
   request: NextRequest
 ): Promise<string[]> {
-  const supabase = buildSupabaseClient(request);
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  try {
+    const supabase = buildSupabaseClient(request);
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-  if (!user) return [];
+    if (!user) return [];
 
-  const cached = keywordCache.get(user.id);
-  if (cached && Date.now() < cached.expiresAt) {
-    return cached.keywords;
+    const cached = keywordCache.get(user.id);
+    if (cached && Date.now() < cached.expiresAt) {
+      return cached.keywords;
+    }
+
+    const { data, error } = await supabase
+      .from("custom_words")
+      .select("word");
+
+    if (error) {
+      console.warn("[STT] custom_words 조회 실패 (DB 미설정 가능):", error.message);
+      return [];
+    }
+
+    const keywords = (data ?? []).map(
+      (row: { word: string }) => `${row.word}:${KEYWORD_BOOST}`
+    );
+
+    keywordCache.set(user.id, {
+      keywords,
+      expiresAt: Date.now() + KEYWORD_CACHE_TTL_MS,
+    });
+
+    return keywords;
+  } catch (err) {
+    console.warn("[STT] 커스텀 키워드 조회 중 예외:", err);
+    return [];
   }
-
-  const { data } = await supabase
-    .from("custom_words")
-    .select("word");
-
-  const keywords = (data ?? []).map(
-    (row: { word: string }) => `${row.word}:${KEYWORD_BOOST}`
-  );
-
-  keywordCache.set(user.id, {
-    keywords,
-    expiresAt: Date.now() + KEYWORD_CACHE_TTL_MS,
-  });
-
-  return keywords;
 }
 
 export async function POST(request: NextRequest) {

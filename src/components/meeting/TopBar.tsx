@@ -38,10 +38,14 @@ export default function TopBar() {
   const [projects, setProjects] = useState<Project[]>([]);
 
   const fetchProjects = useCallback(async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("projects")
       .select("id, name")
       .order("created_at", { ascending: false });
+    if (error) {
+      console.warn("[TOPBAR] 프로젝트 목록 조회 실패 (DB 미설정 가능):", error.message);
+      return;
+    }
     if (data) setProjects(data);
   }, []);
 
@@ -113,8 +117,11 @@ export default function TopBar() {
     const { error } = await supabase.from("meetings").insert(row);
 
     if (error) {
-      console.error("[DB] 회의록 저장 실패:", error.message);
-      alert("회의록 DB 저장에 실패했습니다. 다시 시도해 주세요.");
+      console.warn("[DB] 회의록 저장 실패:", error.message);
+      alert(
+        "회의록 DB 저장 실패: Supabase SQL Editor에서 schema.sql을 실행했는지 확인해 주세요.\n" +
+        "회의록은 클립보드 복사 또는 TXT 다운로드로 보관할 수 있습니다."
+      );
       return;
     }
 

@@ -24,12 +24,14 @@ export default function DictionaryPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editWord, setEditWord] = useState("");
   const [editDescription, setEditDescription] = useState("");
+  const [dbReady, setDbReady] = useState(true);
 
   const fetchWords = useCallback(async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("custom_words")
       .select("id, word, description, created_at")
       .order("created_at", { ascending: false });
+    if (error) { setDbReady(false); return; }
     if (data) setWords(data);
   }, []);
 
@@ -49,8 +51,9 @@ export default function DictionaryPage() {
     });
 
     if (error) {
-      alert("단어 추가에 실패했습니다.");
-      console.error("[DICT] 추가 실패:", error.message);
+      setDbReady(false);
+      alert("단어 추가 실패: Supabase SQL Editor에서 schema.sql을 먼저 실행해 주세요.");
+      console.warn("[DICT] 추가 실패:", error.message);
     } else {
       setNewWord("");
       setNewDescription("");
@@ -68,8 +71,8 @@ export default function DictionaryPage() {
       .eq("id", id);
 
     if (error) {
-      alert("삭제에 실패했습니다.");
-      console.error("[DICT] 삭제 실패:", error.message);
+      alert("삭제 실패: DB 연결을 확인해 주세요.");
+      console.warn("[DICT] 삭제 실패:", error.message);
     } else {
       await fetchWords();
     }
@@ -99,8 +102,8 @@ export default function DictionaryPage() {
       .eq("id", editingId);
 
     if (error) {
-      alert("수정에 실패했습니다.");
-      console.error("[DICT] 수정 실패:", error.message);
+      alert("수정 실패: DB 연결을 확인해 주세요.");
+      console.warn("[DICT] 수정 실패:", error.message);
     } else {
       cancelEdit();
       await fetchWords();
@@ -131,6 +134,23 @@ export default function DictionaryPage() {
       </header>
 
       <main className="mx-auto max-w-2xl px-6 py-10">
+        {!dbReady && (
+          <section className="mb-6">
+            <div className="rounded-xl border border-amber-300 bg-amber-50 p-5">
+              <h3 className="text-sm font-bold text-amber-800 mb-1">
+                ⚠️ Supabase 데이터베이스 설정이 필요합니다
+              </h3>
+              <p className="text-xs text-amber-700 leading-relaxed">
+                단어 사전 기능을 사용하려면 Supabase Dashboard &gt; SQL Editor에서{" "}
+                <code className="px-1 py-0.5 bg-amber-100 rounded text-amber-900 font-mono">
+                  database/schema.sql
+                </code>{" "}
+                파일을 실행해 주세요.
+              </p>
+            </div>
+          </section>
+        )}
+
         {/* 단어 추가 폼 */}
         <section className="rounded-xl border border-gray-200 bg-white p-6 mb-8">
           <h2 className="text-sm font-bold text-gray-900 mb-4">
