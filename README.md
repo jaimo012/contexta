@@ -57,7 +57,8 @@ contexta/
 ├── database/                     # DB 스키마
 │   └── schema.sql                # Supabase 테이블 + RLS 정책
 ├── docs/                         # 기획 문서
-│   └── planning.md               # 서비스 기획안
+│   ├── planning.md               # 서비스 기획안
+│   └── error-log.md              # 오류 대응 로그
 ├── public/                       # 정적 에셋
 ├── src/
 │   ├── app/                      # Next.js App Router (정적 페이지)
@@ -478,56 +479,19 @@ npx cap open ios
 | package.json | `package.json` | "sync" 스크립트 추가 |
 | server/api/* | `server/api/` | API Routes 이동 (6개 route) |
 
-### Hotfix: 인증 무한 리다이렉트 & RPC 함수 미등록 버그 수정 ✅
+### Hotfix 및 오류 대응
 
-Phase 7 이후 로컬 테스트 중 발견된 2건의 크리티컬 버그를 수정했습니다.
+Phase 7 이후 로컬 테스트 중 발견된 버그들을 수정했습니다.
+상세 내역은 **[`docs/error-log.md`](docs/error-log.md)**를 참조하세요.
 
-#### Bug 1: 로그인 무한 리다이렉트 (Middleware ↔ Client 충돌)
+| 핵심 수정 | 상태 |
+|-----------|------|
+| 로그인 무한 리다이렉트 (Middleware ↔ Client 충돌) | ✅ |
+| DB 스키마 미적용 방어 처리 (서킷 브레이커 + 폴백) | ✅ |
+| 회의록 빈 상태 UX 안내 화면 | ✅ |
+| 대시보드 DB 미설정 안내 배너 | ✅ |
 
-- **증상**: `/login?redirectTo=%2Fdashboard`가 수백 번 반복 호출되며 "이동 중..." 화면에서 멈춤
-- **원인**: `middleware.ts`(서버)는 쿠키에서 세션을 찾는데, Supabase JS 클라이언트는 세션을 **localStorage**에 저장 → 서버는 항상 "미인증"으로 판단 → 로그인 페이지는 localStorage에서 유저 감지 → `/dashboard`로 보냄 → 무한 루프
-- **수정**:
-  - `middleware.ts` 제거 (쿠키 기반 인증 불가 구조)
-  - `components/providers/AuthGuard.tsx` 신규 생성 (클라이언트 측 라우트 보호)
-  - `layout.tsx`에 `AuthProvider` → `AuthGuard` 래핑 구조 적용
-  - OAuth `redirectTo`를 `/login` 페이지 경유로 변경 (토큰 교환 안정성)
-
-| 파일 | 변경 내용 |
-|------|----------|
-| `src/middleware.ts` | 삭제 (`.bak` 백업 유지) |
-| `components/providers/AuthGuard.tsx` | 신규 생성 — 클라이언트 측 라우트 가드 |
-| `app/layout.tsx` | `AuthGuard` 래핑 추가 |
-| `app/(auth)/login/page.tsx` | OAuth redirectTo URL 개선 |
-
-#### Bug 2: `increment_used_seconds` RPC 함수 미등록 + DB 스키마 미적용
-
-- **증상**: 녹음 종료 시 `Could not find the function public.increment_used_seconds(delta, uid)` 에러, 폴백 UPDATE도 실패
-- **원인**: `database/schema.sql`이 Supabase DB에 한 번도 실행되지 않은 상태 → `public.users` 테이블, RPC 함수, 트리거 모두 미존재
-- **수정 (코드 3건)**:
-  - `useMeetingTimer.ts`: **서킷 브레이커 패턴** 적용 — RPC → 직접 UPDATE → 3회 연속 실패 시 DB 동기화 자동 비활성화 (콘솔 에러 반복 차단)
-  - `AuthProvider.tsx`: `ensurePublicUserRow()` 함수 추가 — 로그인 시 `public.users` 행이 없으면 자동 `upsert`
-  - `schema.sql`: `handle_new_user()` 트리거 추가 — 향후 신규 가입 시 `auth.users` → `public.users` 자동 생성
-
-| 파일 | 변경 내용 |
-|------|----------|
-| `hooks/useMeetingTimer.ts` | 서킷 브레이커 (3회 실패 시 비활성화) + 함수 분리 |
-| `components/providers/AuthProvider.tsx` | `ensurePublicUserRow` upsert 로직 추가 |
-| `database/schema.sql` | `handle_new_user` 트리거 함수 추가 |
-
-#### Supabase DB 초기 설정 (필수)
-
-**Supabase Dashboard > SQL Editor**에서 `database/schema.sql` 파일 전체를 실행해 주세요. 주요 생성 항목:
-
-- `public.users` 테이블 + `used_seconds` / `limit_seconds` 컬럼
-- `public.meetings`, `public.projects`, `public.custom_words` 테이블
-- `handle_new_user()` 트리거 (구글 로그인 시 public.users 자동 행 생성)
-- `increment_used_seconds()` RPC 함수 (사용 시간 원자적 증가)
-- 전 테이블 RLS 정책 (사용자별 데이터 격리)
-
-#### UX 개선: 회의록 빈 상태 안내 화면
-
-- **증상**: 짧은 녹음 후 종료 시 "생성된 회의록이 없습니다" 한 줄만 표시되어 원인 파악 불가
-- **수정**: `PostMeetingResult.tsx` 빈 상태 UI를 마이크 아이콘 + 원인 설명 + [닫고 다시 녹음하기] / [대시보드로 이동] 버튼 포함 가이드 화면으로 교체
+> **⚠️ 필수**: Supabase Dashboard > SQL Editor에서 `database/schema.sql`을 실행해야 DB 관련 기능이 정상 작동합니다.
 
 ---
 

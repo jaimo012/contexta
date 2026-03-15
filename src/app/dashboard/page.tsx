@@ -49,6 +49,7 @@ export default function DashboardPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newProjectName, setNewProjectName] = useState("");
   const [isCreating, setIsCreating] = useState(false);
+  const [dbReady, setDbReady] = useState(true);
 
   const displayName =
     user?.user_metadata?.full_name ||
@@ -56,36 +57,40 @@ export default function DashboardPage() {
     "사용자";
 
   const fetchProjects = useCallback(async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("projects")
       .select("id, name, created_at")
       .order("created_at", { ascending: false });
+    if (error) { setDbReady(false); return; }
     if (data) setProjects(data);
   }, []);
 
   const fetchMeetings = useCallback(async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("meetings")
       .select("id, title, summary, created_at, project_id")
       .order("created_at", { ascending: false })
       .limit(10);
+    if (error) { setDbReady(false); return; }
     if (data) setMeetings(data);
   }, []);
 
   const fetchQuota = useCallback(async () => {
     if (!user) return;
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("users")
       .select("used_seconds, limit_seconds")
       .eq("id", user.id)
       .single();
+    if (error) return;
     if (data) setQuota(data);
   }, [user]);
 
   const fetchWordCount = useCallback(async () => {
-    const { count } = await supabase
+    const { count, error } = await supabase
       .from("custom_words")
       .select("id", { count: "exact", head: true });
+    if (error) return;
     setWordCount(count ?? 0);
   }, []);
 
@@ -116,8 +121,9 @@ export default function DashboardPage() {
     });
 
     if (error) {
-      alert("프로젝트 생성에 실패했습니다.");
-      console.error("[DB] 프로젝트 생성 실패:", error.message);
+      setDbReady(false);
+      alert("프로젝트 생성 실패: Supabase SQL Editor에서 schema.sql을 먼저 실행해 주세요.");
+      console.warn("[DB] 프로젝트 생성 실패:", error.message);
     } else {
       setNewProjectName("");
       setIsModalOpen(false);
@@ -172,6 +178,24 @@ export default function DashboardPage() {
 
       {/* 메인 콘텐츠 */}
       <main className="mx-auto max-w-4xl px-6 py-10">
+        {/* DB 미설정 안내 배너 */}
+        {!dbReady && (
+          <section className="mb-6">
+            <div className="rounded-xl border border-amber-300 bg-amber-50 p-5">
+              <h3 className="text-sm font-bold text-amber-800 mb-1">
+                ⚠️ Supabase 데이터베이스 설정이 필요합니다
+              </h3>
+              <p className="text-xs text-amber-700 leading-relaxed">
+                프로젝트, 미팅 내역 등의 기능을 사용하려면 Supabase Dashboard &gt; SQL Editor에서{" "}
+                <code className="px-1 py-0.5 bg-amber-100 rounded text-amber-900 font-mono">
+                  database/schema.sql
+                </code>{" "}
+                파일을 실행해 주세요. 녹음 및 AI 힌트 기능은 DB 없이도 정상 동작합니다.
+              </p>
+            </div>
+          </section>
+        )}
+
         {/* 사용 시간 프로그레스 바 + 미션 배너 */}
         {quota && (
           <section className="mb-8">
