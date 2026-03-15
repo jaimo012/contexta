@@ -7,6 +7,23 @@ import { supabase } from "@/utils/supabaseClient";
 
 const DB_SYNC_INTERVAL_SEC = 30;
 
+async function fallbackDirectUpdate(userId: string, delta: number): Promise<boolean> {
+  const { data } = await supabase
+    .from("users")
+    .select("used_seconds")
+    .eq("id", userId)
+    .single();
+
+  if (!data) return false;
+
+  const { error } = await supabase
+    .from("users")
+    .update({ used_seconds: data.used_seconds + delta })
+    .eq("id", userId);
+
+  return !error;
+}
+
 export function useMeetingTimer() {
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pendingSecondsRef = useRef(0);
@@ -24,30 +41,43 @@ export function useMeetingTimer() {
 
     pendingSecondsRef.current = 0;
 
-    await supabase.rpc("increment_used_seconds", {
+    const { error: rpcError } = await supabase.rpc("increment_used_seconds", {
       uid: user.id,
       delta: seconds,
-    }).then(({ error }) => {
-      if (error) {
-        pendingSecondsRef.current += seconds;
-        console.error("[TIMER] used_seconds 동기화 실패:", error.message);
-      }
     });
+
+    if (rpcError) {
+      console.warn("[TIMER] RPC 실패, 직접 UPDATE 폴백 시도:", rpcError.message);
+      const ok = await fallbackDirectUpdate(user.id, seconds);
+      if (!ok) {
+        pendingSecondsRef.current += seconds;
+        console.error("[TIMER] 폴백 UPDATE도 실패, 다음 동기화에 재시도");
+      }
+    }
   }, []);
 
   const fetchUserQuota = useCallback(async () => {
     const user = useAuthStore.getState().user;
     if (!user) return;
 
-    const { data } = await supabase
-      .from("users")
-      .select("used_seconds, limit_seconds")
-      .eq("id", user.id)
-      .single();
+    try {
+      const { data, error } = await supabase
+        .from("users")
+        .select("used_seconds, limit_seconds")
+        .eq("id", user.id)
+        .single();
 
-    if (data) {
-      userUsedRef.current = data.used_seconds;
-      userLimitRef.current = data.limit_seconds;
+      if (error) {
+        console.warn("[TIMER] 사용 시간 조회 실패:", error.message);
+        return;
+      }
+
+      if (data) {
+        userUsedRef.current = data.used_seconds ?? 0;
+        userLimitRef.current = data.limit_seconds ?? 3600;
+      }
+    } catch (err) {
+      console.warn("[TIMER] 사용 시간 조회 중 예외:", err);
     }
   }, []);
 

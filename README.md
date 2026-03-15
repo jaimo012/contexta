@@ -478,6 +478,61 @@ npx cap open ios
 | package.json | `package.json` | "sync" 스크립트 추가 |
 | server/api/* | `server/api/` | API Routes 이동 (6개 route) |
 
+### Hotfix: 인증 무한 리다이렉트 & RPC 함수 미등록 버그 수정 ✅
+
+Phase 7 이후 로컬 테스트 중 발견된 2건의 크리티컬 버그를 수정했습니다.
+
+#### Bug 1: 로그인 무한 리다이렉트 (Middleware ↔ Client 충돌)
+
+- **증상**: `/login?redirectTo=%2Fdashboard`가 수백 번 반복 호출되며 "이동 중..." 화면에서 멈춤
+- **원인**: `middleware.ts`(서버)는 쿠키에서 세션을 찾는데, Supabase JS 클라이언트는 세션을 **localStorage**에 저장 → 서버는 항상 "미인증"으로 판단 → 로그인 페이지는 localStorage에서 유저 감지 → `/dashboard`로 보냄 → 무한 루프
+- **수정**:
+  - `middleware.ts` 제거 (쿠키 기반 인증 불가 구조)
+  - `components/providers/AuthGuard.tsx` 신규 생성 (클라이언트 측 라우트 보호)
+  - `layout.tsx`에 `AuthProvider` → `AuthGuard` 래핑 구조 적용
+  - OAuth `redirectTo`를 `/login` 페이지 경유로 변경 (토큰 교환 안정성)
+
+| 파일 | 변경 내용 |
+|------|----------|
+| `src/middleware.ts` | 삭제 (`.bak` 백업 유지) |
+| `components/providers/AuthGuard.tsx` | 신규 생성 — 클라이언트 측 라우트 가드 |
+| `app/layout.tsx` | `AuthGuard` 래핑 추가 |
+| `app/(auth)/login/page.tsx` | OAuth redirectTo URL 개선 |
+
+#### Bug 2: `increment_used_seconds` RPC 함수 미등록
+
+- **증상**: 녹음 종료 시 `Could not find the function public.increment_used_seconds(delta, uid) in the schema cache` 에러
+- **원인**: `database/schema.sql`에 함수가 정의되어 있으나 **Supabase DB에 실제로 실행되지 않은 상태**
+- **수정**:
+  - `useMeetingTimer.ts`에 **2단계 폴백 전략** 적용: RPC 실패 시 직접 `SELECT` → `UPDATE` 쿼리로 자동 대체
+  - `fetchUserQuota`에 `try-catch` + `nullish coalescing` 방어 처리 추가
+
+| 파일 | 변경 내용 |
+|------|----------|
+| `hooks/useMeetingTimer.ts` | RPC 폴백 로직 + fetchUserQuota 방어 강화 |
+
+#### Supabase DB에서 실행 필요한 SQL
+
+아래 SQL을 **Supabase Dashboard > SQL Editor**에서 실행하면 RPC 함수가 정상 등록됩니다:
+
+```sql
+-- users 테이블에 시간 제한 컬럼 추가 (이미 있으면 무시)
+ALTER TABLE public.users
+  ADD COLUMN IF NOT EXISTS used_seconds  integer NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS limit_seconds integer NOT NULL DEFAULT 3600;
+
+-- 원자적 시간 증가 RPC 함수
+CREATE OR REPLACE FUNCTION public.increment_used_seconds(uid uuid, delta integer)
+RETURNS void
+LANGUAGE sql
+SECURITY DEFINER
+AS $$
+  UPDATE public.users
+  SET used_seconds = used_seconds + delta
+  WHERE id = uid;
+$$;
+```
+
 ---
 
 ## 전체 개발 완료 Phase 요약

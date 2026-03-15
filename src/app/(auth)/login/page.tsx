@@ -1,13 +1,36 @@
 "use client";
 
+import { Suspense, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/utils/supabaseClient";
+import { useAuthStore } from "@/store/useAuthStore";
 
-export default function LoginPage() {
+const DEFAULT_REDIRECT = "/dashboard";
+
+function LoginContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const user = useAuthStore((s) => s.user);
+  const isLoading = useAuthStore((s) => s.isLoading);
+
+  useEffect(() => {
+    if (isLoading) return;
+    if (!user) return;
+
+    const redirectTo = searchParams.get("redirectTo") || DEFAULT_REDIRECT;
+    router.replace(redirectTo);
+  }, [user, isLoading, router, searchParams]);
+
   const handleGoogleLogin = async () => {
+    const next = searchParams.get("redirectTo") || DEFAULT_REDIRECT;
+
+    const callbackUrl = new URL("/login", window.location.origin);
+    callbackUrl.searchParams.set("redirectTo", next);
+
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/meeting`,
+        redirectTo: callbackUrl.toString(),
       },
     });
 
@@ -17,10 +40,19 @@ export default function LoginPage() {
     }
   };
 
+  if (isLoading || user) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gray-50">
+        <div className="text-sm text-gray-400">
+          {user ? "이동 중..." : "로딩 중..."}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50">
       <div className="w-full max-w-sm rounded-2xl bg-white p-10 shadow-lg border border-gray-100">
-        {/* 타이틀 */}
         <h1 className="text-2xl font-bold text-gray-900 text-center">
           Contexta
         </h1>
@@ -28,7 +60,6 @@ export default function LoginPage() {
           실시간 AI 미팅 코파일럿
         </p>
 
-        {/* 구글 로그인 버튼 */}
         <button
           onClick={handleGoogleLogin}
           className="flex w-full items-center justify-center gap-3 rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 hover:shadow-md transition-all"
@@ -54,11 +85,24 @@ export default function LoginPage() {
           구글 계정으로 시작하기
         </button>
 
-        {/* 하단 안내 */}
         <p className="mt-8 text-center text-xs text-gray-400">
           로그인 시 서비스 이용약관에 동의하는 것으로 간주합니다.
         </p>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-gray-50">
+          <div className="text-sm text-gray-400">로딩 중...</div>
+        </div>
+      }
+    >
+      <LoginContent />
+    </Suspense>
   );
 }
