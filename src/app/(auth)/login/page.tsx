@@ -4,6 +4,7 @@ import { Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/utils/supabaseClient";
 import { useAuthStore } from "@/store/useAuthStore";
+import { Mic } from "lucide-react";
 
 const DEFAULT_REDIRECT = "/dashboard";
 
@@ -42,8 +43,8 @@ function LoginContent() {
 
   if (isLoading || user) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50">
-        <div className="text-sm text-gray-400">
+      <div className="flex min-h-screen items-center justify-center bg-notion-bg">
+        <div className="text-sm text-notion-text-muted">
           {user ? "이동 중..." : "로딩 중..."}
         </div>
       </div>
@@ -51,20 +52,26 @@ function LoginContent() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50">
-      <div className="w-full max-w-sm rounded-2xl bg-white p-10 shadow-lg border border-gray-100">
-        <h1 className="text-2xl font-bold text-gray-900 text-center">
-          Contexta
-        </h1>
-        <p className="text-sm text-gray-500 text-center mt-1 mb-10">
-          실시간 AI 미팅 코파일럿
-        </p>
+    <div className="flex min-h-screen items-center justify-center bg-notion-bg">
+      <div className="w-full max-w-sm rounded-xl bg-white p-10 border border-notion-border">
+        {/* Logo */}
+        <div className="flex flex-col items-center gap-3 mb-10">
+          <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-mint">
+            <Mic className="h-6 w-6 text-white" />
+          </div>
+          <div className="text-center">
+            <h1 className="text-xl font-bold text-dark">Contexta</h1>
+            <p className="text-sm text-notion-text-secondary mt-1">
+              실시간 AI 미팅 코파일럿
+            </p>
+          </div>
+        </div>
 
         <button
           onClick={handleGoogleLogin}
-          className="flex w-full items-center justify-center gap-3 rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 hover:shadow-md transition-all"
+          className="flex w-full items-center justify-center gap-3 rounded-lg border border-notion-border bg-white px-4 py-3 text-sm font-medium text-notion-text hover:bg-notion-bg-hover transition-colors"
         >
-          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
             <path
               d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"
               fill="#4285F4"
@@ -85,7 +92,7 @@ function LoginContent() {
           구글 계정으로 시작하기
         </button>
 
-        <p className="mt-8 text-center text-xs text-gray-400">
+        <p className="mt-8 text-center text-xs text-notion-text-muted">
           로그인 시 서비스 이용약관에 동의하는 것으로 간주합니다.
         </p>
       </div>
@@ -97,8 +104,8 @@ export default function LoginPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-screen items-center justify-center bg-gray-50">
-          <div className="text-sm text-gray-400">로딩 중...</div>
+        <div className="flex min-h-screen items-center justify-center bg-notion-bg">
+          <div className="text-sm text-notion-text-muted">로딩 중...</div>
         </div>
       }
     >

@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { supabase } from "@/utils/supabaseClient";
 import { useAuthStore } from "@/store/useAuthStore";
+import { ArrowLeft, Plus, Pencil, Trash2, AlertTriangle, Mic } from "lucide-react";
 
 interface CustomWord {
   id: string;
@@ -112,57 +113,65 @@ export default function DictionaryPage() {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50">
-        <div className="h-8 w-8 rounded-full border-4 border-gray-200 border-t-gray-800 animate-spin" />
+      <div className="flex min-h-screen items-center justify-center bg-notion-bg">
+        <div className="h-6 w-6 rounded-full border-2 border-notion-border border-t-dark animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* 헤더 */}
-      <header className="flex h-16 items-center gap-4 border-b border-gray-200 bg-white px-6 md:px-10">
+    <div className="min-h-screen bg-notion-bg">
+      {/* Header - Notion style */}
+      <header className="flex h-11 items-center gap-3 border-b border-notion-border px-4 md:px-6">
         <Link
           href="/dashboard"
-          className="text-sm text-gray-400 hover:text-gray-700 transition-colors"
+          className="inline-flex items-center gap-1 text-xs text-notion-text-secondary hover:text-dark transition-colors"
         >
-          ← 대시보드
+          <ArrowLeft className="h-3.5 w-3.5" />
+          대시보드
         </Link>
-        <span className="text-lg font-bold tracking-tight text-gray-900">
-          내 영업 사전 관리
-        </span>
+        <div className="h-4 w-px bg-notion-border" />
+        <div className="flex items-center gap-2">
+          <div className="flex h-6 w-6 items-center justify-center rounded bg-mint">
+            <Mic className="h-3.5 w-3.5 text-white" />
+          </div>
+          <span className="text-sm font-semibold text-dark">내 영업 사전</span>
+        </div>
       </header>
 
-      <main className="mx-auto max-w-2xl px-6 py-10">
+      <main className="mx-auto max-w-[720px] px-6 md:px-12 py-10">
         {!dbReady && (
-          <section className="mb-6">
-            <div className="rounded-xl border border-amber-300 bg-amber-50 p-5">
-              <h3 className="text-sm font-bold text-amber-800 mb-1">
-                ⚠️ Supabase 데이터베이스 설정이 필요합니다
-              </h3>
-              <p className="text-xs text-amber-700 leading-relaxed">
-                단어 사전 기능을 사용하려면 Supabase Dashboard &gt; SQL Editor에서{" "}
-                <code className="px-1 py-0.5 bg-amber-100 rounded text-amber-900 font-mono">
-                  database/schema.sql
-                </code>{" "}
-                파일을 실행해 주세요.
-              </p>
+          <section className="mb-6 animate-fade-in">
+            <div className="flex items-start gap-3 rounded-lg border border-[#FFAA00]/30 bg-[#FFAA00]/5 p-4">
+              <AlertTriangle className="h-4 w-4 text-[#FFAA00] mt-0.5 shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-dark">
+                  Supabase 데이터베이스 설정이 필요합니다
+                </p>
+                <p className="text-xs text-notion-text-secondary mt-1 leading-relaxed">
+                  Supabase Dashboard &gt; SQL Editor에서{" "}
+                  <code className="px-1 py-0.5 bg-notion-bg-hover rounded text-dark font-mono text-[11px]">
+                    database/schema.sql
+                  </code>{" "}
+                  파일을 실행해 주세요.
+                </p>
+              </div>
             </div>
           </section>
         )}
 
-        {/* 단어 추가 폼 */}
-        <section className="rounded-xl border border-gray-200 bg-white p-6 mb-8">
-          <h2 className="text-sm font-bold text-gray-900 mb-4">
-            새 단어 추가하기
+        {/* Add form */}
+        <section className="mb-8">
+          <h2 className="text-xs font-semibold text-notion-text-secondary uppercase tracking-wider mb-3">
+            새 단어 추가
           </h2>
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-2">
             <input
               type="text"
               value={newWord}
               onChange={(e) => setNewWord(e.target.value)}
               placeholder="단어 (예: Kubernetes, SLA)"
-              className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              className="w-full rounded-md border border-notion-border px-3 py-2 text-sm text-dark placeholder-notion-text-muted outline-none focus:border-mint focus:ring-1 focus:ring-mint transition-colors"
             />
             <input
               type="text"
@@ -170,45 +179,45 @@ export default function DictionaryPage() {
               onChange={(e) => setNewDescription(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleAdd()}
               placeholder="설명 (예: 컨테이너 오케스트레이션 시스템)"
-              className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              className="w-full rounded-md border border-notion-border px-3 py-2 text-sm text-dark placeholder-notion-text-muted outline-none focus:border-mint focus:ring-1 focus:ring-mint transition-colors"
             />
             <button
               onClick={handleAdd}
               disabled={isAdding || !newWord.trim()}
-              className="self-end px-5 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="self-end inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-mint rounded-md hover:bg-mint-dark disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              {isAdding ? "추가 중..." : "단어 추가"}
+              <Plus className="h-3.5 w-3.5" />
+              {isAdding ? "추가 중..." : "추가"}
             </button>
           </div>
         </section>
 
-        {/* 단어 리스트 */}
+        {/* Word list */}
         <section>
-          <h2 className="text-sm font-bold text-gray-900 mb-4">
+          <h2 className="text-xs font-semibold text-notion-text-secondary uppercase tracking-wider mb-3">
             등록된 단어 ({words.length}개)
           </h2>
 
           {words.length === 0 ? (
-            <div className="rounded-xl border border-gray-200 bg-white p-12 text-center">
-              <p className="text-gray-400 text-sm">
-                등록된 단어가 없습니다. 위 폼에서 첫 번째 단어를 추가해 보세요.
+            <div className="rounded-lg border border-notion-border p-12 text-center">
+              <p className="text-sm text-notion-text-muted">
+                등록된 단어가 없습니다. 첫 번째 단어를 추가해 보세요.
               </p>
             </div>
           ) : (
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col">
               {words.map((item) => (
                 <div
                   key={item.id}
-                  className="rounded-xl border border-gray-200 bg-white px-5 py-4"
+                  className="group -mx-2 px-2 py-2.5 rounded-md hover:bg-notion-bg-hover transition-colors"
                 >
                   {editingId === item.id ? (
-                    /* 수정 모드 */
                     <div className="flex flex-col gap-2">
                       <input
                         type="text"
                         value={editWord}
                         onChange={(e) => setEditWord(e.target.value)}
-                        className="w-full rounded-lg border border-blue-300 px-3 py-2 text-sm text-gray-900 outline-none focus:ring-1 focus:ring-blue-500"
+                        className="w-full rounded-md border border-mint px-3 py-2 text-sm text-dark outline-none focus:ring-1 focus:ring-mint"
                         autoFocus
                       />
                       <input
@@ -216,49 +225,50 @@ export default function DictionaryPage() {
                         value={editDescription}
                         onChange={(e) => setEditDescription(e.target.value)}
                         onKeyDown={(e) => e.key === "Enter" && handleUpdate()}
-                        className="w-full rounded-lg border border-blue-300 px-3 py-2 text-sm text-gray-900 outline-none focus:ring-1 focus:ring-blue-500"
+                        className="w-full rounded-md border border-mint px-3 py-2 text-sm text-dark outline-none focus:ring-1 focus:ring-mint"
                       />
                       <div className="flex justify-end gap-2 mt-1">
                         <button
                           onClick={cancelEdit}
-                          className="px-3 py-1.5 text-xs font-medium text-gray-600 rounded-lg hover:bg-gray-100 transition-colors"
+                          className="px-3 py-1.5 text-xs font-medium text-notion-text-secondary rounded-md hover:bg-notion-bg-hover transition-colors"
                         >
                           취소
                         </button>
                         <button
                           onClick={handleUpdate}
                           disabled={!editWord.trim()}
-                          className="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                          className="px-3 py-1.5 text-xs font-medium text-white bg-mint rounded-md hover:bg-mint-dark disabled:opacity-50 transition-colors"
                         >
                           저장
                         </button>
                       </div>
                     </div>
                   ) : (
-                    /* 읽기 모드 */
                     <div className="flex items-start justify-between gap-4 min-w-0">
                       <div className="min-w-0 flex-1 overflow-hidden">
-                        <h3 className="text-sm font-semibold text-gray-900 truncate" title={item.word}>
+                        <h3 className="text-sm font-medium text-dark truncate" title={item.word}>
                           {item.word}
                         </h3>
                         {item.description && (
-                          <p className="text-sm text-gray-500 mt-0.5 line-clamp-2 break-words" title={item.description}>
+                          <p className="text-xs text-notion-text-secondary mt-0.5 line-clamp-2 break-words" title={item.description}>
                             {item.description}
                           </p>
                         )}
                       </div>
-                      <div className="flex items-center gap-1 shrink-0">
+                      <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
                           onClick={() => startEdit(item)}
-                          className="px-2.5 py-1 text-xs font-medium text-gray-500 rounded-md hover:bg-gray-100 hover:text-gray-700 transition-colors"
+                          className="rounded-md p-1.5 text-notion-text-muted hover:bg-notion-border hover:text-notion-text transition-colors"
+                          title="수정"
                         >
-                          수정
+                          <Pencil className="h-3.5 w-3.5" />
                         </button>
                         <button
                           onClick={() => handleDelete(item.id)}
-                          className="px-2.5 py-1 text-xs font-medium text-red-400 rounded-md hover:bg-red-50 hover:text-red-600 transition-colors"
+                          className="rounded-md p-1.5 text-notion-text-muted hover:bg-pink-light hover:text-pink transition-colors"
+                          title="삭제"
                         >
-                          삭제
+                          <Trash2 className="h-3.5 w-3.5" />
                         </button>
                       </div>
                     </div>

@@ -8,6 +8,7 @@ import { useMeetingTimer } from "@/hooks/useMeetingTimer";
 import { useAiHint } from "@/hooks/useAiHint";
 import { supabase } from "@/utils/supabaseClient";
 import { apiUrl } from "@/utils/apiUrl";
+import { Mic, Square, Sparkles, ChevronDown } from "lucide-react";
 
 interface Project {
   id: string;
@@ -138,72 +139,88 @@ export default function TopBar() {
   };
 
   return (
-    <div className="h-16 bg-white border-b border-gray-200 px-4 md:px-6 flex items-center justify-between shrink-0">
-      {/* 좌측: 미팅 제목 + 프로젝트 선택 */}
+    <div className="h-11 bg-notion-bg border-b border-notion-border px-4 md:px-6 flex items-center justify-between shrink-0">
+      {/* Left: Title + Project */}
       <div className="flex items-center gap-2 min-w-0 max-w-[45%]">
         <input
           type="text"
           value={meetingTitle}
           onChange={(e) => setMeetingTitle(e.target.value)}
-          placeholder="미팅 제목 입력..."
+          placeholder="제목 없음"
           disabled={isRecording}
-          className="text-sm md:text-base font-bold text-gray-900 bg-transparent border-none outline-none placeholder-gray-400 truncate min-w-0 w-full disabled:opacity-70"
+          className="text-sm font-medium text-dark bg-transparent border-none outline-none placeholder-notion-text-muted truncate min-w-0 w-full disabled:opacity-70"
         />
-        <select
-          value={selectedProjectId ?? ""}
-          onChange={(e) =>
-            setSelectedProjectId(e.target.value || null)
-          }
-          disabled={isRecording}
-          className="shrink-0 text-xs border border-gray-200 rounded-lg px-2 py-1.5 text-gray-600 bg-gray-50 outline-none focus:border-blue-400 disabled:opacity-50"
-        >
-          <option value="">폴더 없음</option>
-          {projects.map((p) => (
-            <option key={p.id} value={p.id}>
-              📁 {p.name}
-            </option>
-          ))}
-        </select>
+        <div className="relative shrink-0">
+          <select
+            value={selectedProjectId ?? ""}
+            onChange={(e) =>
+              setSelectedProjectId(e.target.value || null)
+            }
+            disabled={isRecording}
+            className="appearance-none text-xs border border-notion-border rounded-md pl-2.5 pr-7 py-1 text-notion-text-secondary bg-notion-bg outline-none hover:bg-notion-bg-hover focus:border-mint disabled:opacity-50 transition-colors cursor-pointer"
+          >
+            <option value="">폴더 없음</option>
+            {projects.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+          <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 h-3 w-3 text-notion-text-muted pointer-events-none" />
+        </div>
       </div>
 
-      {/* 중앙: 타이머 + VAD 인디케이터 */}
-      <div className="flex items-center gap-2.5">
+      {/* Center: Timer + VAD */}
+      <div className="flex items-center gap-2">
         {isRecording && (
-          <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
+          <span className="h-2 w-2 rounded-full bg-pink animate-rec-pulse" />
         )}
-        <span className="font-mono text-sm text-gray-500 tabular-nums">
+        <span className="font-mono text-xs text-notion-text-secondary tabular-nums">
           {formatTime(meetingTime)}
         </span>
         {isRecording && (
           <span
-            className={`h-2.5 w-2.5 rounded-full ${
+            className={`h-2 w-2 rounded-full transition-colors ${
               isSpeaking
-                ? "bg-green-500 animate-pulse"
-                : "bg-gray-300"
+                ? "bg-mint animate-pulse"
+                : "bg-notion-border"
             }`}
             title={isSpeaking ? "음성 감지 중" : "무음"}
           />
         )}
       </div>
 
-      {/* 우측: 액션 버튼 */}
-      <div className="flex items-center gap-2 md:gap-3">
+      {/* Right: Actions */}
+      <div className="flex items-center gap-1.5">
         <button
           onClick={fetchHint}
-          className="px-3 md:px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-mint-dark bg-mint-light rounded-md hover:bg-mint/15 transition-colors"
         >
-          💡 힌트 줘
+          <Sparkles className="h-3.5 w-3.5" />
+          힌트
         </button>
         <button
           onClick={isRecording ? handleStop : handleStart}
           disabled={isStartingRecording}
-          className={`px-3 md:px-4 py-2 text-sm font-medium rounded-lg transition-colors disabled:opacity-60 disabled:cursor-not-allowed ${
+          className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors disabled:opacity-60 disabled:cursor-not-allowed ${
             isRecording
-              ? "text-white bg-gray-700 hover:bg-gray-800"
-              : "text-white bg-red-500 hover:bg-red-600"
+              ? "text-notion-text-secondary bg-notion-bg-hover hover:bg-notion-border"
+              : "text-white bg-pink hover:bg-pink-dark"
           }`}
         >
-          {isStartingRecording ? "시작 중..." : isRecording ? "⏹ 녹음 종료" : "🔴 녹음 시작"}
+          {isStartingRecording ? (
+            "시작 중..."
+          ) : isRecording ? (
+            <>
+              <Square className="h-3 w-3" />
+              종료
+            </>
+          ) : (
+            <>
+              <Mic className="h-3.5 w-3.5" />
+              녹음
+            </>
+          )}
         </button>
       </div>
     </div>

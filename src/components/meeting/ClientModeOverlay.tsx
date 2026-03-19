@@ -15,17 +15,17 @@ export default function ClientModeOverlay() {
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-[#f5f5f5] flex flex-col overflow-hidden overscroll-none safe-top safe-bottom"
+      className="fixed inset-0 z-50 bg-client-bg flex flex-col overflow-hidden overscroll-none safe-top safe-bottom"
       onTouchMove={preventBounce}
     >
       <div className="h-8 bg-[#f0f0f0] border-b border-[#d4d4d4] flex items-center px-3 shrink-0">
-        <span className="text-xs text-[#6b6b6b]">메모장</span>
+        <span className="text-xs text-client-text">메모장</span>
       </div>
       <textarea
         value={text}
         onChange={(e) => setText(e.target.value)}
         autoFocus
-        className="flex-1 w-full resize-none border-none bg-[#f5f5f5] p-4 text-sm leading-relaxed text-[#6b6b6b] focus:outline-none overscroll-none"
+        className="flex-1 w-full resize-none border-none bg-client-bg p-4 text-sm leading-relaxed text-client-text focus:outline-none overscroll-none"
         style={{ caretColor: "#6b6b6b", WebkitOverflowScrolling: "touch" }}
       />
     </div>

@@ -5,13 +5,13 @@ interface SummaryBlockProps {
 
 export default function SummaryBlock({ time, content }: SummaryBlockProps) {
   return (
-    <div className="py-4 border-b border-gray-100 last:border-b-0">
-      <span className="text-xs font-medium text-gray-400 tracking-wide">
+    <div className="py-3 border-b border-notion-border/50 last:border-b-0">
+      <span className="text-xs text-notion-text-muted tabular-nums">
         {time}
       </span>
-      <div className="mt-2 flex flex-col gap-1.5">
+      <div className="mt-1.5 flex flex-col gap-1">
         {content.map((line, i) => (
-          <p key={i} className="text-sm leading-relaxed text-gray-800">
+          <p key={i} className="text-sm leading-relaxed text-dark">
             {line}
           </p>
         ))}
