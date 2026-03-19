@@ -37,49 +37,52 @@ export default function MeetingPage() {
   const hasContent = transcripts.length > 0 || hints.length > 0;
 
   return (
-    <div className="h-screen w-screen overflow-hidden bg-gray-50 flex flex-col">
+    <div className="h-screen w-screen overflow-hidden bg-notion-bg flex flex-col">
       <ClientModeOverlay />
       <PostMeetingResult />
       <TopBar />
+
       <div className="flex-1 flex flex-col md:flex-row w-full overflow-hidden">
-        {/* 좌측 메인 영역 (모바일: 전체, PC: 70%) */}
-        <section className="w-full md:w-[70%] h-1/2 md:h-full border-b md:border-b-0 md:border-r bg-white p-4 md:p-6 overflow-y-auto overscroll-none">
-          {!hasContent && (
-            <div className="flex items-center justify-center h-full">
-              <p className="text-gray-400 text-sm">
-                {isRecording
-                  ? "음성을 인식하고 있습니다. 대화를 시작하세요..."
-                  : "녹음을 시작하면 실시간 요약과 힌트가 여기에 표시됩니다."}
-              </p>
-            </div>
-          )}
+        {/* Left: Main content area (Notion page style) */}
+        <section className="w-full md:w-[70%] h-1/2 md:h-full border-b md:border-b-0 md:border-r border-notion-border bg-notion-bg overflow-y-auto overscroll-none">
+          <div className="max-w-[720px] mx-auto px-6 md:px-12 py-6">
+            {!hasContent && (
+              <div className="flex items-center justify-center h-[60vh]">
+                <p className="text-sm text-notion-text-muted">
+                  {isRecording
+                    ? "음성을 인식하고 있습니다. 대화를 시작하세요..."
+                    : "녹음을 시작하면 실시간 요약과 힌트가 여기에 표시됩니다."}
+                </p>
+              </div>
+            )}
 
-          {transcripts.map((entry) => (
-            <SummaryBlock
-              key={entry.id}
-              time={new Date(entry.timestamp).toLocaleTimeString("ko-KR", {
-                hour: "2-digit",
-                minute: "2-digit",
-                second: "2-digit",
-              })}
-              content={[entry.text]}
-            />
-          ))}
+            {transcripts.map((entry) => (
+              <SummaryBlock
+                key={entry.id}
+                time={new Date(entry.timestamp).toLocaleTimeString("ko-KR", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  second: "2-digit",
+                })}
+                content={[entry.text]}
+              />
+            ))}
 
-          {hints.map((hint) => (
-            <div key={hint.id} className="pt-2">
-              <AiHint message={hint.text} />
-            </div>
-          ))}
+            {hints.map((hint) => (
+              <div key={hint.id} className="py-1.5 animate-fade-in">
+                <AiHint message={hint.text} />
+              </div>
+            ))}
 
-          <div ref={bottomRef} />
+            <div ref={bottomRef} />
+          </div>
         </section>
 
-        {/* 우측 사이드 영역 (모바일: 전체, PC: 30%) */}
-        <aside className="w-full md:w-[30%] h-1/2 md:h-full bg-gray-50 p-4 md:p-6 flex flex-col gap-4 overflow-y-auto overscroll-none">
+        {/* Right: Sidebar */}
+        <aside className="w-full md:w-[30%] h-1/2 md:h-full bg-notion-bg-sub p-4 md:p-5 flex flex-col gap-4 overflow-y-auto overscroll-none border-l border-notion-border">
           <LiveNotepad />
           <div className="flex flex-col gap-2 overflow-y-auto">
-            <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+            <h2 className="text-xs font-semibold text-notion-text-secondary uppercase tracking-wider">
               용어 사전
             </h2>
             <GlossaryCard

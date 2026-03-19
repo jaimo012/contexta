@@ -5,6 +5,19 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/utils/supabaseClient";
 import { useAuthStore } from "@/store/useAuthStore";
+import {
+  Mic,
+  Plus,
+  BookOpen,
+  LogOut,
+  FolderOpen,
+  FileText,
+  X,
+  AlertTriangle,
+  Target,
+  Gift,
+  ArrowRight,
+} from "lucide-react";
 
 const WORD_MISSION_THRESHOLD = 10;
 const FREE_LIMIT_SECONDS = 3600;
@@ -161,78 +174,94 @@ export default function DashboardPage() {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50">
-        <div className="h-8 w-8 rounded-full border-4 border-gray-200 border-t-gray-800 animate-spin" />
+      <div className="flex min-h-screen items-center justify-center bg-notion-bg">
+        <div className="h-6 w-6 rounded-full border-2 border-notion-border border-t-dark animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* 헤더 */}
-      <header className="flex h-16 items-center justify-between border-b border-gray-200 bg-white px-6 md:px-10">
-        <span className="text-lg font-bold tracking-tight text-gray-900">
-          Contexta
-        </span>
-        <div className="flex items-center gap-4">
-          <span className="hidden sm:inline text-sm text-gray-500">
-            환영합니다, <strong className="text-gray-900">{displayName}</strong>님
+    <div className="min-h-screen bg-notion-bg">
+      {/* Header - Notion style */}
+      <header className="flex h-11 items-center justify-between border-b border-notion-border px-4 md:px-6">
+        <div className="flex items-center gap-2">
+          <div className="flex h-6 w-6 items-center justify-center rounded bg-mint">
+            <Mic className="h-3.5 w-3.5 text-white" />
+          </div>
+          <span className="text-sm font-semibold text-dark">Contexta</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <span className="hidden sm:inline text-xs text-notion-text-secondary mr-2">
+            {displayName}
           </span>
           <Link
             href="/settings/dictionary"
-            className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors"
+            className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium text-notion-text-secondary hover:bg-notion-bg-hover transition-colors"
           >
-            📖 내 사전
+            <BookOpen className="h-3.5 w-3.5" />
+            내 사전
           </Link>
           <button
             onClick={handleLogout}
-            className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors"
+            className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium text-notion-text-secondary hover:bg-notion-bg-hover transition-colors"
           >
+            <LogOut className="h-3.5 w-3.5" />
             로그아웃
           </button>
         </div>
       </header>
 
-      {/* 메인 콘텐츠 */}
-      <main className="mx-auto max-w-4xl px-6 py-10">
-        {/* DB 미설정 안내 배너 */}
+      {/* Main content */}
+      <main className="mx-auto max-w-[900px] px-6 md:px-24 py-10">
+        {/* DB warning banner */}
         {!dbReady && (
-          <section className="mb-6">
-            <div className="rounded-xl border border-amber-300 bg-amber-50 p-5">
-              <h3 className="text-sm font-bold text-amber-800 mb-1">
-                ⚠️ Supabase 데이터베이스 설정이 필요합니다
-              </h3>
-              <p className="text-xs text-amber-700 leading-relaxed">
-                프로젝트, 미팅 내역 등의 기능을 사용하려면 Supabase Dashboard &gt; SQL Editor에서{" "}
-                <code className="px-1 py-0.5 bg-amber-100 rounded text-amber-900 font-mono">
-                  database/schema.sql
-                </code>{" "}
-                파일을 실행해 주세요. 녹음 및 AI 힌트 기능은 DB 없이도 정상 동작합니다.
-              </p>
+          <section className="mb-6 animate-fade-in">
+            <div className="flex items-start gap-3 rounded-lg border border-[#FFAA00]/30 bg-[#FFAA00]/5 p-4">
+              <AlertTriangle className="h-4 w-4 text-[#FFAA00] mt-0.5 shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-dark">
+                  Supabase 데이터베이스 설정이 필요합니다
+                </p>
+                <p className="text-xs text-notion-text-secondary mt-1 leading-relaxed">
+                  Supabase Dashboard &gt; SQL Editor에서{" "}
+                  <code className="px-1 py-0.5 bg-notion-bg-hover rounded text-dark font-mono text-[11px]">
+                    database/schema.sql
+                  </code>{" "}
+                  파일을 실행해 주세요.
+                </p>
+              </div>
             </div>
           </section>
         )}
 
-        {/* 사용 시간 프로그레스 바 + 미션 배너 */}
+        {/* Page title */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-dark">
+            안녕하세요, {displayName}님
+          </h1>
+          <p className="text-notion-text-secondary mt-1">
+            새로운 미팅을 시작하거나, 이전 회의록을 확인하세요.
+          </p>
+        </div>
+
+        {/* Usage quota */}
         {quota && (
           <section className="mb-8">
-            <div className="rounded-xl border border-gray-200 bg-white p-5">
+            <div className="rounded-lg border border-notion-border p-4">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-semibold text-gray-900">
+                <span className="text-sm font-medium text-dark">
                   사용 시간
                 </span>
-                <span className="text-xs text-gray-500">
+                <span className="text-xs text-notion-text-secondary">
                   {formatSeconds(quota.used_seconds)} / {formatSeconds(quota.limit_seconds)}
                 </span>
               </div>
-              <div className="h-3 w-full rounded-full bg-gray-100 overflow-hidden">
+              <div className="h-2 w-full rounded-full bg-notion-surface overflow-hidden">
                 <div
                   className={`h-full rounded-full transition-all duration-500 ${
                     quota.used_seconds / quota.limit_seconds >= 0.9
-                      ? "bg-red-500"
-                      : quota.used_seconds / quota.limit_seconds >= 0.6
-                        ? "bg-yellow-400"
-                        : "bg-blue-500"
+                      ? "bg-pink"
+                      : "bg-mint"
                   }`}
                   style={{
                     width: `${Math.min(
@@ -243,38 +272,42 @@ export default function DashboardPage() {
                 />
               </div>
 
-              {/* 미션 배너 */}
+              {/* Mission banner */}
               {quota.limit_seconds <= FREE_LIMIT_SECONDS && (
-                <div className="mt-4 rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 p-4">
+                <div className="mt-4 rounded-lg bg-mint-light border border-mint/20 p-4">
                   <div className="flex items-center justify-between gap-4">
-                    <div>
-                      <p className="text-sm font-semibold text-blue-800">
-                        🎯 락인 미션: 내 사전에 단어를 {WORD_MISSION_THRESHOLD}개 이상 등록하세요!
-                      </p>
-                      <p className="text-xs text-blue-600 mt-1">
-                        달성 시 사용 시간이 <strong>+1시간</strong> 늘어납니다! (현재 {wordCount}/{WORD_MISSION_THRESHOLD}개)
-                      </p>
+                    <div className="flex items-start gap-2.5">
+                      <Target className="h-4 w-4 text-mint-dark mt-0.5 shrink-0" />
+                      <div>
+                        <p className="text-sm font-medium text-dark">
+                          락인 미션: 내 사전에 단어를 {WORD_MISSION_THRESHOLD}개 이상 등록하세요
+                        </p>
+                        <p className="text-xs text-notion-text-secondary mt-0.5">
+                          달성 시 사용 시간 <strong className="text-mint-dark">+1시간</strong> (현재 {wordCount}/{WORD_MISSION_THRESHOLD}개)
+                        </p>
+                      </div>
                     </div>
                     {wordCount >= WORD_MISSION_THRESHOLD ? (
                       <button
                         onClick={claimReward}
-                        className="shrink-0 px-4 py-2 text-sm font-bold text-white bg-blue-600 rounded-lg hover:bg-blue-700 animate-pulse transition-colors"
+                        className="shrink-0 inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-mint rounded-lg hover:bg-mint-dark transition-colors"
                       >
-                        🎁 보상 받기
+                        <Gift className="h-4 w-4" />
+                        보상 받기
                       </button>
                     ) : (
                       <Link
                         href="/settings/dictionary"
-                        className="shrink-0 px-4 py-2 text-sm font-medium text-blue-600 bg-white border border-blue-300 rounded-lg hover:bg-blue-50 transition-colors"
+                        className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-mint-dark bg-white border border-mint/30 rounded-lg hover:bg-mint-light transition-colors"
                       >
-                        단어 등록하기 →
+                        단어 등록하기
+                        <ArrowRight className="h-3.5 w-3.5" />
                       </Link>
                     )}
                   </div>
-                  {/* 미션 진행 바 */}
-                  <div className="mt-3 h-2 w-full rounded-full bg-blue-100 overflow-hidden">
+                  <div className="mt-3 h-1.5 w-full rounded-full bg-mint/10 overflow-hidden">
                     <div
-                      className="h-full rounded-full bg-blue-500 transition-all duration-500"
+                      className="h-full rounded-full bg-mint transition-all duration-500"
                       style={{
                         width: `${Math.min(
                           (wordCount / WORD_MISSION_THRESHOLD) * 100,
@@ -289,54 +322,48 @@ export default function DashboardPage() {
           </section>
         )}
 
-        {/* 상단 CTA */}
-        <div className="flex flex-col items-center gap-2 mb-10">
-          <h1 className="text-2xl font-bold text-gray-900">
-            환영합니다, {displayName}님
-          </h1>
-          <p className="text-sm text-gray-500 mb-4">
-            새로운 미팅을 시작하거나, 이전 회의록을 확인하세요.
-          </p>
-          <div className="flex items-center gap-3">
-            <Link
-              href="/meeting"
-              className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-8 py-4 text-base font-semibold text-white shadow-lg shadow-blue-200 hover:bg-blue-700 hover:shadow-xl hover:shadow-blue-200 transition-all"
-            >
-              🚀 새 미팅 시작하기
-            </Link>
-            <button
-              onClick={() => setIsModalOpen(true)}
-              className="inline-flex items-center gap-2 rounded-xl border border-gray-300 bg-white px-6 py-4 text-base font-semibold text-gray-700 hover:bg-gray-50 hover:border-gray-400 transition-all"
-            >
-              📁 새 프로젝트 생성
-            </button>
-          </div>
+        {/* CTA Buttons */}
+        <div className="flex items-center gap-2 mb-8">
+          <Link
+            href="/meeting"
+            className="inline-flex items-center gap-2 rounded-lg bg-mint px-5 py-2.5 text-sm font-medium text-white hover:bg-mint-dark transition-colors"
+          >
+            <Plus className="h-4 w-4" />
+            새 미팅 시작하기
+          </Link>
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="inline-flex items-center gap-2 rounded-lg border border-notion-border px-4 py-2.5 text-sm font-medium text-notion-text hover:bg-notion-bg-hover transition-colors"
+          >
+            <FolderOpen className="h-4 w-4" />
+            새 프로젝트
+          </button>
         </div>
 
-        {/* 프로젝트 목록 */}
+        {/* Projects */}
         {projects.length > 0 && (
-          <section className="mb-10">
-            <h2 className="text-lg font-bold text-gray-900 mb-3">
-              내 프로젝트
+          <section className="mb-8">
+            <h2 className="text-xs font-semibold text-notion-text-secondary uppercase tracking-wider mb-3">
+              프로젝트
             </h2>
             <div className="flex flex-wrap gap-2">
               {projects.map((project) => (
                 <span
                   key={project.id}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-3 py-1.5 text-sm font-medium text-blue-700"
+                  className="group inline-flex items-center gap-1.5 rounded-md border border-notion-border bg-notion-bg px-3 py-1.5 text-sm text-notion-text hover:bg-notion-bg-hover transition-colors"
                 >
+                  <FolderOpen className="h-3.5 w-3.5 text-notion-text-secondary" />
                   <span className="max-w-[120px] truncate" title={project.name}>
-                    📁 {project.name}
+                    {project.name}
                   </span>
                   <button
                     type="button"
                     onClick={() => handleDeleteProject(project.id, project.name)}
-                    className="ml-0.5 rounded-full p-0.5 text-blue-500 hover:bg-blue-200 hover:text-blue-800 transition-colors"
+                    className="ml-0.5 rounded p-0.5 text-notion-text-muted opacity-0 group-hover:opacity-100 hover:bg-notion-border hover:text-notion-text transition-all"
                     title="프로젝트 삭제"
                     aria-label="프로젝트 삭제"
                   >
-                    <span className="sr-only">삭제</span>
-                    <span aria-hidden>×</span>
+                    <X className="h-3 w-3" />
                   </button>
                 </span>
               ))}
@@ -344,46 +371,42 @@ export default function DashboardPage() {
           </section>
         )}
 
-        {/* 최근 미팅 내역 */}
+        {/* Recent meetings - Notion page list style */}
         <section>
-          <h2 className="text-lg font-bold text-gray-900 mb-4">
-            최근 미팅 내역
+          <h2 className="text-xs font-semibold text-notion-text-secondary uppercase tracking-wider mb-3">
+            최근 미팅
           </h2>
           {meetings.length === 0 ? (
-            <div className="rounded-xl border border-gray-200 bg-white p-12 text-center">
-              <p className="text-gray-400">
+            <div className="rounded-lg border border-notion-border p-12 text-center">
+              <p className="text-sm text-notion-text-muted">
                 아직 미팅 기록이 없습니다. 새 미팅을 시작해 보세요.
               </p>
             </div>
           ) : (
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col">
               {meetings.map((meeting) => {
                 const projectName = getProjectName(meeting.project_id);
                 return (
                   <div
                     key={meeting.id}
-                    className="rounded-xl border border-gray-200 bg-white p-5 hover:shadow-md hover:border-gray-300 transition-all cursor-pointer"
+                    className="flex items-center gap-3 px-2 py-2 -mx-2 rounded-md hover:bg-notion-bg-hover transition-colors cursor-pointer group"
                   >
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <h3 className="text-sm font-semibold text-gray-900 truncate">
+                    <FileText className="h-4 w-4 text-notion-text-muted shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-dark truncate">
                           {meeting.title || "제목 없는 미팅"}
-                        </h3>
+                        </span>
                         {projectName && (
-                          <span className="shrink-0 rounded-full bg-blue-50 border border-blue-200 px-2 py-0.5 text-xs font-medium text-blue-600">
+                          <span className="shrink-0 text-xs text-notion-text-muted">
                             {projectName}
                           </span>
                         )}
                       </div>
-                      <time className="text-xs text-gray-400 shrink-0 ml-4">
-                        {new Date(meeting.created_at).toLocaleDateString("ko-KR")}
-                      </time>
                     </div>
-                    <p className="text-sm text-gray-500 leading-relaxed line-clamp-2">
-                      {meeting.summary
-                        ? meeting.summary.slice(0, 120) + "..."
-                        : "요약 없음"}
-                    </p>
+                    <time className="text-xs text-notion-text-muted shrink-0">
+                      {new Date(meeting.created_at).toLocaleDateString("ko-KR")}
+                    </time>
                   </div>
                 );
               })}
@@ -392,11 +415,11 @@ export default function DashboardPage() {
         </section>
       </main>
 
-      {/* 프로젝트 생성 모달 */}
+      {/* Project creation modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="w-full max-w-sm mx-4 rounded-2xl bg-white p-6 shadow-2xl">
-            <h3 className="text-lg font-bold text-gray-900 mb-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
+          <div className="w-full max-w-sm mx-4 rounded-xl bg-white p-6 shadow-xl border border-notion-border animate-fade-in">
+            <h3 className="text-base font-semibold text-dark mb-4">
               새 프로젝트 생성
             </h3>
             <input
@@ -404,26 +427,26 @@ export default function DashboardPage() {
               value={newProjectName}
               onChange={(e) => setNewProjectName(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleCreateProject()}
-              placeholder="프로젝트(폴더) 이름을 입력하세요"
-              className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+              placeholder="프로젝트 이름을 입력하세요"
+              className="w-full rounded-lg border border-notion-border px-3 py-2.5 text-sm text-dark placeholder-notion-text-muted focus:border-mint focus:ring-1 focus:ring-mint outline-none transition-colors"
               autoFocus
             />
-            <div className="flex justify-end gap-2 mt-5">
+            <div className="flex justify-end gap-2 mt-4">
               <button
                 onClick={() => {
                   setIsModalOpen(false);
                   setNewProjectName("");
                 }}
-                className="px-4 py-2 text-sm font-medium text-gray-600 rounded-lg hover:bg-gray-100 transition-colors"
+                className="px-4 py-2 text-sm font-medium text-notion-text-secondary rounded-lg hover:bg-notion-bg-hover transition-colors"
               >
                 취소
               </button>
               <button
                 onClick={handleCreateProject}
                 disabled={isCreating || !newProjectName.trim()}
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="px-4 py-2 text-sm font-medium text-white bg-mint rounded-lg hover:bg-mint-dark disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                {isCreating ? "생성 중..." : "생성하기"}
+                {isCreating ? "생성 중..." : "생성"}
               </button>
             </div>
           </div>

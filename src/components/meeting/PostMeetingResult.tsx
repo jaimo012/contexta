@@ -5,6 +5,7 @@ import Link from "next/link";
 import Markdown from "react-markdown";
 import { useMeetingStore } from "@/store/useMeetingStore";
 import { downloadAsTxt, copyToClipboard } from "@/utils/exportUtils";
+import { X, Copy, Download, ArrowLeft, Mic } from "lucide-react";
 
 export default function PostMeetingResult() {
   const isMeetingEnded = useMeetingStore((s) => s.isMeetingEnded);
@@ -26,62 +27,62 @@ export default function PostMeetingResult() {
   if (!isMeetingEnded) return null;
 
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40">
-      <div className="relative w-full max-w-3xl max-h-[85vh] mx-4 rounded-2xl bg-white shadow-2xl flex flex-col overflow-hidden">
-        {/* 헤더 */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 shrink-0">
-          <h2 className="text-lg font-bold text-gray-900">
-            {isGeneratingMinutes ? "회의록 생성 중" : "미팅 회의록"}
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/30">
+      <div className="relative w-full max-w-3xl max-h-[85vh] mx-4 rounded-xl bg-notion-bg border border-notion-border shadow-xl flex flex-col overflow-hidden animate-fade-in">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-3 border-b border-notion-border shrink-0">
+          <h2 className="text-sm font-semibold text-dark">
+            {isGeneratingMinutes ? "회의록 생성 중..." : "미팅 회의록"}
           </h2>
           {!isGeneratingMinutes && finalMinutes && (
             <button
               onClick={() => setMeetingEnded(false)}
-              className="text-sm text-gray-400 hover:text-gray-700 transition-colors"
+              className="rounded-md p-1 text-notion-text-muted hover:bg-notion-bg-hover hover:text-notion-text transition-colors"
             >
-              ✕ 닫기
+              <X className="h-4 w-4" />
             </button>
           )}
         </div>
 
-        {/* 본문 */}
-        <div className="flex-1 overflow-y-auto px-6 py-5">
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto px-6 md:px-12 py-6">
           {isGeneratingMinutes ? (
             <div className="flex flex-col items-center justify-center gap-4 py-20">
-              <div className="h-10 w-10 rounded-full border-4 border-gray-200 border-t-gray-800 animate-spin" />
-              <p className="text-sm text-gray-500">
-                AI가 완벽한 회의록을 작성 중입니다...
+              <div className="h-8 w-8 rounded-full border-2 border-notion-border border-t-dark animate-spin" />
+              <p className="text-sm text-notion-text-secondary">
+                AI가 회의록을 작성하고 있습니다...
               </p>
-              <p className="text-xs text-gray-400">
-                대화 내용을 분석하여 4가지 모듈로 정리하고 있어요.
+              <p className="text-xs text-notion-text-muted">
+                대화 내용을 분석하여 4가지 모듈로 정리 중
               </p>
             </div>
           ) : finalMinutes ? (
-            <article className="prose prose-sm prose-gray max-w-none">
+            <article className="prose prose-sm prose-neutral max-w-none [&_h1]:text-dark [&_h2]:text-dark [&_h3]:text-dark [&_p]:text-notion-text [&_li]:text-notion-text [&_strong]:text-dark">
               <Markdown>{finalMinutes}</Markdown>
             </article>
           ) : (
             <div className="flex flex-col items-center justify-center gap-4 py-16">
-              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gray-100">
-                <span className="text-2xl">🎙️</span>
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-notion-surface">
+                <Mic className="h-5 w-5 text-notion-text-muted" />
               </div>
               <div className="text-center">
-                <p className="text-sm font-medium text-gray-600">
+                <p className="text-sm font-medium text-dark">
                   수집된 대화가 없어 회의록을 생성할 수 없습니다
                 </p>
-                <p className="mt-1 text-xs text-gray-400">
-                  녹음 중 마이크에 대고 말씀해 주세요. 음성이 감지되어야 텍스트가 수집됩니다.
+                <p className="mt-1 text-xs text-notion-text-muted">
+                  녹음 중 마이크에 대고 말씀해 주세요.
                 </p>
               </div>
-              <div className="flex items-center gap-3 mt-2">
+              <div className="flex items-center gap-2 mt-2">
                 <button
                   onClick={() => setMeetingEnded(false)}
-                  className="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                  className="px-4 py-2 text-sm font-medium text-notion-text-secondary rounded-lg hover:bg-notion-bg-hover transition-colors"
                 >
                   닫고 다시 녹음하기
                 </button>
                 <Link
                   href="/dashboard"
-                  className="px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
+                  className="px-4 py-2 text-sm font-medium text-mint-dark bg-mint-light rounded-lg hover:bg-mint/15 transition-colors"
                 >
                   대시보드로 이동
                 </Link>
@@ -90,31 +91,34 @@ export default function PostMeetingResult() {
           )}
         </div>
 
-        {/* 하단 액션 */}
+        {/* Footer */}
         {!isGeneratingMinutes && finalMinutes && (
-          <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200 shrink-0">
+          <div className="flex items-center justify-between px-6 py-3 border-t border-notion-border shrink-0">
             {isSavedToDb ? (
               <Link
                 href="/dashboard"
-                className="px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
+                className="inline-flex items-center gap-1.5 text-sm font-medium text-notion-text-secondary hover:text-dark transition-colors"
               >
-                ← 대시보드로 돌아가기
+                <ArrowLeft className="h-3.5 w-3.5" />
+                대시보드
               </Link>
             ) : (
-              <span className="text-xs text-gray-400">저장 중...</span>
+              <span className="text-xs text-notion-text-muted">저장 중...</span>
             )}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <button
                 onClick={() => copyToClipboard(finalMinutes)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-notion-text-secondary rounded-md hover:bg-notion-bg-hover transition-colors"
               >
-                📋 클립보드 복사
+                <Copy className="h-3.5 w-3.5" />
+                복사
               </button>
               <button
                 onClick={() => downloadAsTxt("회의록", finalMinutes)}
-                className="px-4 py-2 text-sm font-medium text-white bg-gray-900 rounded-lg hover:bg-gray-700 transition-colors"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-dark rounded-md hover:bg-dark/90 transition-colors"
               >
-                📄 TXT 다운로드
+                <Download className="h-3.5 w-3.5" />
+                다운로드
               </button>
             </div>
           </div>

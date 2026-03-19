@@ -1,26 +1,46 @@
 export const COLORS = {
-  hintBlue: "#B3D9FF",
-  hintBlueDark: "#8EC5FF",
+  // Brand
+  mint: "#00D68F",
+  mintLight: "#E6FAF2",
+  mintDark: "#00B377",
 
-  clientModeBg: "#E5E5E5",
-  clientModeText: "#6B6B6B",
-  clientModeBorder: "#CCCCCC",
+  pink: "#FF2D78",
+  pinkLight: "#FFF0F5",
+  pinkDark: "#E0195F",
 
-  background: "#FAFAFA",
-  foreground: "#1A1A1A",
+  dark: "#1E1E2E",
 
+  // Notion-like backgrounds
+  background: "#FFFFFF",
+  backgroundSub: "#FAFAFA",
+  backgroundHover: "#F1F1F0",
+
+  // Notion-like text
+  textPrimary: "#37352F",
+  textSecondary: "#787774",
+  textMuted: "#B4B4B0",
+
+  // Notion-like borders
+  border: "#E8E8E8",
+  borderLight: "#F0F0F0",
+
+  // Surfaces
   surfaceWhite: "#FFFFFF",
-  surfaceGray: "#F5F5F5",
+  surfaceGray: "#F7F6F3",
 
-  textPrimary: "#1A1A1A",
-  textSecondary: "#6B7280",
-  textMuted: "#9CA3AF",
+  // Status
+  success: "#00D68F",
+  warning: "#FFAA00",
+  error: "#FF2D78",
+  recording: "#FF2D78",
 
-  border: "#E5E7EB",
-  borderLight: "#F3F4F6",
+  // AI Hint (callout style)
+  hintBg: "#E6FAF2",
+  hintBorder: "#00D68F",
+  hintText: "#1E1E2E",
 
-  success: "#10B981",
-  warning: "#F59E0B",
-  error: "#EF4444",
-  recording: "#EF4444",
+  // Client mode (keep gray notepad)
+  clientModeBg: "#F5F5F5",
+  clientModeText: "#6B6B6B",
+  clientModeBorder: "#D4D4D4",
 } as const;

@@ -5,9 +5,9 @@ interface GlossaryCardProps {
 
 export default function GlossaryCard({ term, definition }: GlossaryCardProps) {
   return (
-    <div className="rounded-lg border border-gray-200 bg-white shadow-sm px-4 py-3">
-      <h3 className="text-sm font-bold text-gray-900">{term}</h3>
-      <p className="mt-1 text-xs leading-relaxed text-gray-500">{definition}</p>
+    <div className="rounded-md border border-notion-border bg-notion-bg px-3 py-2.5 hover:bg-notion-bg-hover transition-colors">
+      <h3 className="text-sm font-medium text-dark">{term}</h3>
+      <p className="mt-0.5 text-xs leading-relaxed text-notion-text-secondary">{definition}</p>
     </div>
   );
 }
