@@ -1,16 +1,33 @@
 import { create } from "zustand";
+import { DEMO_MEETINGS, type AgendaItem } from "@/constants/demoMeetings";
 
-interface TranscriptEntry {
+export type { AgendaItem } from "@/constants/demoMeetings";
+
+export interface TranscriptEntry {
   id: string;
   text: string;
   timestamp: number;
 }
 
-interface HintEntry {
+export interface HintEntry {
   id: string;
   text: string;
   timestamp: number;
 }
+
+export interface SummaryEntry {
+  id: string;
+  text: string;
+  timestamp: number;
+  type: "summary" | "hint";
+}
+
+interface GlossaryEntry {
+  term: string;
+  definition: string;
+}
+
+export type MeetingTab = "summary" | "script" | "minutes";
 
 interface MeetingState {
   isRecording: boolean;
@@ -23,10 +40,18 @@ interface MeetingState {
   audioChunks: Blob[];
   transcripts: TranscriptEntry[];
   hints: HintEntry[];
+  summaries: SummaryEntry[];
+  agendaItems: AgendaItem[];
+  meetingStartTime: number;
+  lastUpdateTime: number;
+  activeTab: MeetingTab;
   isMeetingEnded: boolean;
   isGeneratingMinutes: boolean;
   finalMinutes: string;
   isSavedToDb: boolean;
+  isDemoMode: boolean;
+  glossaryTerms: GlossaryEntry[];
+  note: string;
 }
 
 interface MeetingActions {
@@ -41,12 +66,17 @@ interface MeetingActions {
   clearAudioChunks: () => void;
   addTranscript: (entry: TranscriptEntry) => void;
   addHint: (entry: HintEntry) => void;
+  addSummary: (entry: SummaryEntry) => void;
+  setAgendaItems: (items: AgendaItem[]) => void;
+  setActiveTab: (tab: MeetingTab) => void;
   setMeetingEnded: (value: boolean) => void;
   setIsGeneratingMinutes: (value: boolean) => void;
   setFinalMinutes: (value: string) => void;
   setIsSavedToDb: (value: boolean) => void;
   setMeetingTitle: (value: string) => void;
   setSelectedProjectId: (value: string | null) => void;
+  setNote: (value: string) => void;
+  loadDemoData: (demoId: string) => void;
 }
 
 const INITIAL_STATE: MeetingState = {
@@ -60,17 +90,29 @@ const INITIAL_STATE: MeetingState = {
   audioChunks: [],
   transcripts: [],
   hints: [],
+  summaries: [],
+  agendaItems: [],
+  meetingStartTime: 0,
+  lastUpdateTime: 0,
+  activeTab: "summary",
   isMeetingEnded: false,
   isGeneratingMinutes: false,
   finalMinutes: "",
   isSavedToDb: false,
+  isDemoMode: false,
+  glossaryTerms: [],
+  note: "",
 };
 
 export const useMeetingStore = create<MeetingState & MeetingActions>(
   (set) => ({
     ...INITIAL_STATE,
 
-    setIsRecording: (value) => set({ isRecording: value }),
+    setIsRecording: (value) =>
+      set((state) => ({
+        isRecording: value,
+        meetingStartTime: value && !state.meetingStartTime ? Date.now() : state.meetingStartTime,
+      })),
     setIsClientMode: (value) => set({ isClientMode: value }),
     setMeetingTime: (value) => set({ meetingTime: value }),
     toggleClientMode: () =>
@@ -84,12 +126,47 @@ export const useMeetingStore = create<MeetingState & MeetingActions>(
     addTranscript: (entry) =>
       set((state) => ({ transcripts: [...state.transcripts, entry] })),
     addHint: (entry) =>
-      set((state) => ({ hints: [...state.hints, entry] })),
+      set((state) => ({
+        hints: [...state.hints, entry],
+        // Also add hints to summaries timeline
+        summaries: [
+          ...state.summaries,
+          { id: entry.id, text: entry.text, timestamp: entry.timestamp, type: "hint" as const },
+        ],
+      })),
+    addSummary: (entry) =>
+      set((state) => ({
+        summaries: [...state.summaries, entry],
+        lastUpdateTime: entry.timestamp,
+      })),
+    setAgendaItems: (items) => set({ agendaItems: items }),
+    setActiveTab: (tab) => set({ activeTab: tab }),
     setMeetingEnded: (value) => set({ isMeetingEnded: value }),
     setIsGeneratingMinutes: (value) => set({ isGeneratingMinutes: value }),
     setFinalMinutes: (value) => set({ finalMinutes: value }),
     setIsSavedToDb: (value) => set({ isSavedToDb: value }),
     setMeetingTitle: (value) => set({ meetingTitle: value }),
     setSelectedProjectId: (value) => set({ selectedProjectId: value }),
+    setNote: (value) => set({ note: value }),
+    loadDemoData: (demoId) => {
+      const demo = DEMO_MEETINGS.find((d) => d.id === demoId);
+      if (!demo) return;
+      set({
+        ...INITIAL_STATE,
+        isDemoMode: true,
+        meetingTitle: demo.title,
+        meetingTime: demo.meetingTime,
+        meetingStartTime: demo.meetingStartTime,
+        lastUpdateTime: demo.lastUpdateTime,
+        transcripts: demo.transcripts,
+        hints: demo.hints,
+        summaries: demo.summaries,
+        agendaItems: demo.agendaItems,
+        glossaryTerms: demo.glossary,
+        note: demo.note,
+        finalMinutes: demo.minutes,
+        isMeetingEnded: true,
+      });
+    },
   })
 );
