@@ -31,6 +31,7 @@ export default function TopBar() {
   const selectedProjectId = useMeetingStore((s) => s.selectedProjectId);
   const setMeetingTitle = useMeetingStore((s) => s.setMeetingTitle);
   const setSelectedProjectId = useMeetingStore((s) => s.setSelectedProjectId);
+  const isDemoMode = useMeetingStore((s) => s.isDemoMode);
 
   const { startRecording, stopRecording } = useAudioRecorder();
   const { startTimer, stopTimer } = useMeetingTimer(stopRecording);
@@ -147,7 +148,8 @@ export default function TopBar() {
           value={meetingTitle}
           onChange={(e) => setMeetingTitle(e.target.value)}
           placeholder="제목 없음"
-          disabled={isRecording}
+          disabled={isRecording || isDemoMode}
+          readOnly={isDemoMode}
           className="text-sm font-medium text-dark bg-transparent border-none outline-none placeholder-notion-text-muted truncate min-w-0 w-full disabled:opacity-70"
         />
         <div className="relative shrink-0">
@@ -192,36 +194,47 @@ export default function TopBar() {
 
       {/* Right: Actions */}
       <div className="flex items-center gap-1.5">
-        <button
-          onClick={fetchHint}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-mint-dark bg-mint-light rounded-md hover:bg-mint/15 transition-colors"
-        >
-          <Sparkles className="h-3.5 w-3.5" />
-          힌트
-        </button>
-        <button
-          onClick={isRecording ? handleStop : handleStart}
-          disabled={isStartingRecording}
-          className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors disabled:opacity-60 disabled:cursor-not-allowed ${
-            isRecording
-              ? "text-notion-text-secondary bg-notion-bg-hover hover:bg-notion-border"
-              : "text-white bg-pink hover:bg-pink-dark"
-          }`}
-        >
-          {isStartingRecording ? (
-            "시작 중..."
-          ) : isRecording ? (
-            <>
-              <Square className="h-3 w-3" />
-              종료
-            </>
-          ) : (
-            <>
-              <Mic className="h-3.5 w-3.5" />
-              녹음
-            </>
-          )}
-        </button>
+        {isDemoMode ? (
+          <a
+            href="/dashboard"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-notion-text-secondary bg-notion-bg-hover rounded-md hover:bg-notion-border transition-colors"
+          >
+            대시보드로 돌아가기
+          </a>
+        ) : (
+          <>
+            <button
+              onClick={fetchHint}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-mint-dark bg-mint-light rounded-md hover:bg-mint/15 transition-colors"
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              힌트
+            </button>
+            <button
+              onClick={isRecording ? handleStop : handleStart}
+              disabled={isStartingRecording}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors disabled:opacity-60 disabled:cursor-not-allowed ${
+                isRecording
+                  ? "text-notion-text-secondary bg-notion-bg-hover hover:bg-notion-border"
+                  : "text-white bg-pink hover:bg-pink-dark"
+              }`}
+            >
+              {isStartingRecording ? (
+                "시작 중..."
+              ) : isRecording ? (
+                <>
+                  <Square className="h-3 w-3" />
+                  종료
+                </>
+              ) : (
+                <>
+                  <Mic className="h-3.5 w-3.5" />
+                  녹음
+                </>
+              )}
+            </button>
+          </>
+        )}
       </div>
     </div>
   );

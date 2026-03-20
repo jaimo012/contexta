@@ -528,6 +528,74 @@ Phase 7 이후 로컬 테스트 중 발견된 버그들을 수정했습니다.
 
 ---
 
+## 작업 로그
+
+### 2026-03-19: UI 디자인 리뉴얼 + 데모 미팅 시스템
+
+#### 완료한 작업
+
+**1. Notion-like 디자인 시스템 전면 적용**
+- 브랜드 컬러 3색 도입: Mint(`#00D68F`), Pink(`#FF2D78`), Dark(`#1E1E2E`)
+- Notion 스타일 토큰: 텍스트(`#37352F`), 배경(`#FFFFFF`/`#FBFBFA`), 테두리(`#E8E8E8`) 등
+- `globals.css`에 `@theme inline` 블록으로 Tailwind 커스텀 컬러 정의
+- Lucide React 아이콘으로 전환 (이모지 완전 제거)
+- 커스텀 애니메이션: `fade-in`, `rec-pulse`
+
+**2. 대시보드 3컬럼 레이아웃 재구성**
+- 왼쪽: 접이식 사이드바 (로고, 새 미팅 CTA, 프로젝트, 미팅 기록, 하단 메뉴)
+- 가운데: 메인 컨텐츠 (인사 + 최근 미팅 목록) — 중앙 정렬
+- 오른쪽: 미니 캘린더 + 다가오는 미팅 카드 4건
+- 구독 플랜 + 남은 시간 + 시간 늘리기 미션 버튼 (Free 플랜 전용)
+
+**3. 데모 미팅 시스템 구축 (실제 meeting 화면 체험)**
+- `src/constants/demoMeetings.ts`: 3개 유즈케이스별 풍부한 데모 데이터
+  - Contexta 온보딩 미팅 (14개 발화 + 3개 힌트 + 3개 용어 + 메모)
+  - 클라우드 마이그레이션 기술 협상 (18개 발화 + 4개 힌트 + 6개 용어 + 메모)
+  - B2B SaaS 고객 인터뷰 (18개 발화 + 4개 힌트 + 4개 용어 + 메모)
+- 대시보드에서 데모 미팅 클릭 → `/meeting?demo={demoId}`로 이동
+- meeting 페이지에서 데모 데이터 자동 로드 (transcript + hint 시간순 인터리빙)
+- 오른쪽 사이드바: 유즈케이스별 맞춤 용어 사전 + 메모 자동 채움
+- TopBar: 데모 모드에서 녹음 버튼 → "대시보드로 돌아가기" 전환
+
+**4. 전체 페이지 Notion 스타일 적용**
+- 랜딩(`/`), 로그인(`/login`), 미팅(`/meeting`), 사전(`/settings/dictionary`) 전체 리디자인
+- AiHint: mint 좌측 보더 + Sparkles 아이콘 스타일
+- TopBar: 44px 노션 스타일 바, mint 힌트 버튼, pink 녹음 버튼
+
+**5. CONTEXT.md 생성**
+- AI 어시스턴트용 프로젝트 컨텍스트 문서 작성
+
+#### 변경된 파일 목록
+
+| 파일 | 변경 유형 |
+|------|-----------|
+| `src/constants/theme.ts` | 수정 — Notion 컬러 토큰 + 브랜드 컬러 |
+| `src/constants/demoMeetings.ts` | **신규** — 3개 데모 미팅 데이터 |
+| `src/app/globals.css` | 수정 — @theme inline, 커스텀 애니메이션, 스크롤바 |
+| `src/app/page.tsx` | 수정 — 랜딩 Notion 스타일 |
+| `src/app/(auth)/login/page.tsx` | 수정 — 로그인 Notion 스타일 |
+| `src/app/dashboard/page.tsx` | **대폭 수정** — 3컬럼 레이아웃, 사이드바, 캘린더, 데모 미팅 |
+| `src/app/meeting/page.tsx` | 수정 — 데모 모드 감지, 동적 용어사전, Suspense 래핑 |
+| `src/app/settings/dictionary/page.tsx` | 수정 — Notion 스타일 |
+| `src/store/useMeetingStore.ts` | 수정 — glossary, note, isDemoMode, loadDemoData 추가 |
+| `src/components/meeting/TopBar.tsx` | 수정 — 데모 모드 대응, Notion 스타일 |
+| `src/components/meeting/AiHint.tsx` | 수정 — mint 보더 + Sparkles |
+| `src/components/meeting/SummaryBlock.tsx` | 수정 — Notion 텍스트 스타일 |
+| `src/components/meeting/LiveNotepad.tsx` | 수정 — store 연동 (note 읽기/쓰기) |
+| `src/components/meeting/GlossaryCard.tsx` | 수정 — Notion 카드 스타일 |
+| `src/components/meeting/PostMeetingResult.tsx` | 수정 — Notion 모달 스타일 |
+| `src/components/meeting/ClientModeOverlay.tsx` | 수정 — CSS 변수 업데이트 |
+| `CONTEXT.md` | **신규** — 프로젝트 컨텍스트 문서 |
+| `README.md` | 수정 — 작업 로그 섹션 추가 |
+
+#### 다음 작업 예정
+- 전체 변경사항 Git 커밋 및 PR 생성
+- Google Calendar 연동 (현재 플레이스홀더)
+- 실제 미팅 데이터 기반 대시보드 고도화
+- 팀 대시보드 / CRM 연동 기능 기획
+
+---
+
 ## 라이선스
 
 Private - All Rights Reserved
