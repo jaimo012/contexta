@@ -19,7 +19,25 @@ function LoginContent() {
     if (!user) return;
 
     const redirectTo = searchParams.get("redirectTo") || DEFAULT_REDIRECT;
-    router.replace(redirectTo);
+
+    // Check if the user has completed onboarding
+    (async () => {
+      try {
+        const { data } = await supabase
+          .from("users")
+          .select("profile_completed")
+          .eq("id", user.id)
+          .single();
+
+        if (!data || !data.profile_completed) {
+          router.replace("/onboarding");
+          return;
+        }
+      } catch {
+        // DB not set up or query failed — skip onboarding check
+      }
+      router.replace(redirectTo);
+    })();
   }, [user, isLoading, router, searchParams]);
 
   const handleGoogleLogin = async () => {
