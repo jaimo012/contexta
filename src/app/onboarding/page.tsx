@@ -91,24 +91,23 @@ export default function OnboardingPage() {
     if (!user) return;
     setIsSaving(true);
     try {
-      // Save profile to users table (upsert)
-      const { error } = await supabase.from("users").upsert(
-        {
-          id: user.id,
+      // Update existing user row (created by auth trigger)
+      const { error } = await supabase
+        .from("users")
+        .update({
           profile_data: profile,
           profile_completed: true,
           limit_seconds:
             filledCount >= 5
               ? 3600 + BONUS_MINUTES * 60 // base 1h + bonus 1h
               : 3600,
-        },
-        { onConflict: "id" }
-      );
+        })
+        .eq("id", user.id);
       if (error) {
-        console.warn("[Onboarding] DB 저장 실패:", error.message);
+        console.error("[Onboarding] DB 저장 실패:", error.message);
       }
-    } catch {
-      console.warn("[Onboarding] DB 저장 중 오류");
+    } catch (e) {
+      console.error("[Onboarding] DB 저장 중 오류:", e);
     }
     setIsSaving(false);
     router.push("/dashboard");
