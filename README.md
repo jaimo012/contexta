@@ -614,6 +614,12 @@ Phase 7 이후 로컬 테스트 중 발견된 버그들을 수정했습니다.
 **3. 글로벌 CSS 추가**
 - `.input-field` 클래스: Notion 스타일 입력 필드 (mint 포커스 링)
 
+**4. 뷰포트 오버플로우 버그 수정**
+- 온보딩 3단계(사용 목적)에서 100% 줌 시 하단 버튼이 뷰포트 밖으로 밀리는 레이아웃 버그 수정
+- 원인: `min-h-screen`은 컨테이너 확장을 허용하여 `flex-1 + overflow-y-auto`가 미작동
+- 수정: `h-dvh overflow-hidden`으로 변경, 컨텐츠 영역만 스크롤, 네비게이션 항상 고정
+- `rules.md`에 뷰포트 레이아웃 규칙 추가 (재발 방지)
+
 #### 변경된 파일 목록
 
 | 파일 | 변경 유형 |
@@ -621,6 +627,7 @@ Phase 7 이후 로컬 테스트 중 발견된 버그들을 수정했습니다.
 | `src/app/onboarding/page.tsx` | **신규** — 3단계 프로필 온보딩 페이지 |
 | `src/app/globals.css` | 수정 — `.input-field` 클래스 추가 |
 | `src/components/providers/AuthGuard.tsx` | 수정 — `/onboarding` public path 추가 |
+| `rules.md` | 수정 — 뷰포트 레이아웃 규칙 추가 |
 
 ---
 
