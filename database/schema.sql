@@ -56,8 +56,15 @@ create trigger on_auth_user_created
 --  1-b. users 사용 시간 제한 컬럼
 -- =========================
 alter table public.users
-  add column if not exists used_seconds  integer not null default 0,
-  add column if not exists limit_seconds integer not null default 3600;
+  add column if not exists used_seconds       integer not null default 0,
+  add column if not exists limit_seconds      integer not null default 3600;
+
+-- =========================
+--  1-c. users 프로필 데이터 (온보딩)
+-- =========================
+alter table public.users
+  add column if not exists profile_data      jsonb default null,
+  add column if not exists profile_completed boolean not null default false;
 
 -- used_seconds 원자적 증가 함수 (타이머에서 호출)
 create or replace function public.increment_used_seconds(uid uuid, delta integer)
