@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/utils/supabaseClient";
 import { useAuthStore } from "@/store/useAuthStore";
@@ -48,6 +48,30 @@ export default function OnboardingPage() {
     displayName: user?.user_metadata?.full_name || "",
   }));
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
+
+  // Load existing profile data from DB
+  useEffect(() => {
+    if (!user) { setIsLoadingProfile(false); return; }
+    (async () => {
+      const { data } = await supabase
+        .from("users")
+        .select("profile_data")
+        .eq("id", user.id)
+        .single();
+      if (data?.profile_data) {
+        const saved = data.profile_data as ProfileData;
+        setProfile((prev) => ({
+          ...prev,
+          ...saved,
+          // Ensure arrays are always arrays (DB might return null)
+          useCases: saved.useCases || [],
+          clientTypes: saved.clientTypes || [],
+        }));
+      }
+      setIsLoadingProfile(false);
+    })();
+  }, [user]);
 
   const update = useCallback(
     <K extends keyof ProfileData>(key: K, value: ProfileData[K]) => {
@@ -123,6 +147,14 @@ export default function OnboardingPage() {
       : step === 1
         ? !!profile.displayName
         : profile.useCases.length > 0;
+
+  if (isLoadingProfile) {
+    return (
+      <div className="flex h-dvh items-center justify-center bg-notion-bg">
+        <div className="h-6 w-6 rounded-full border-2 border-notion-border border-t-mint animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="h-dvh bg-notion-bg flex flex-col overflow-hidden">
