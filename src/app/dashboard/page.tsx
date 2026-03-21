@@ -487,7 +487,7 @@ export default function DashboardPage() {
                 onEdit={() => router.push("/onboarding")}
               />
             ) : (
-            <div className="max-w-[720px] mx-auto px-6 md:px-12 py-10">
+              <div className="max-w-[720px] mx-auto px-6 md:px-12 py-10">
               {/* DB warning banner */}
               {!dbReady && (
                 <section className="mb-6 animate-fade-in">
@@ -599,7 +599,7 @@ export default function DashboardPage() {
                   </div>
                 )}
               </section>
-            </div>
+              </div>
             )}
           </div>
 
