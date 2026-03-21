@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuthStore } from "@/store/useAuthStore";
 
-const PUBLIC_PATHS = ["/", "/login"];
+const PUBLIC_PATHS = ["/", "/login", "/onboarding"];
 
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -13,7 +13,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const isLoading = useAuthStore((s) => s.isLoading);
 
   const isPublic = PUBLIC_PATHS.some(
-    (p) => pathname === p || pathname.startsWith("/login")
+    (p) => pathname === p || pathname.startsWith(p + "/")
   );
 
   useEffect(() => {

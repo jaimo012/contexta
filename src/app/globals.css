@@ -105,6 +105,26 @@ body {
   animation: fade-in 0.3s ease-out;
 }
 
+/* Common input field */
+.input-field {
+  width: 100%;
+  border-radius: 0.5rem;
+  border: 1px solid var(--color-notion-border);
+  background: var(--color-notion-bg);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  color: var(--color-dark);
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.input-field::placeholder {
+  color: var(--color-notion-text-muted);
+}
+.input-field:focus {
+  border-color: var(--color-mint);
+  box-shadow: 0 0 0 1px var(--color-mint);
+}
+
 .safe-top { padding-top: var(--safe-top); }
 .safe-bottom { padding-bottom: var(--safe-bottom); }
 .safe-x { padding-left: var(--safe-left); padding-right: var(--safe-right); }
