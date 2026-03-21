@@ -28,8 +28,17 @@ import {
   Clock,
   MapPin,
   Users,
+  Building2,
+  Briefcase,
+  Sparkles,
+  ChevronRight,
+  Pencil,
 } from "lucide-react";
 import { DEMO_MEETINGS } from "@/constants/demoMeetings";
+import {
+  type ProfileData,
+  COACHING_STYLES,
+} from "@/constants/profileOptions";
 
 const WORD_MISSION_THRESHOLD = 10;
 const FREE_LIMIT_SECONDS = 3600;
@@ -78,6 +87,9 @@ export default function DashboardPage() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isMissionOpen, setIsMissionOpen] = useState(false);
   const [selectedMeeting, setSelectedMeeting] = useState<{ title: string; summary: string; date: string; project?: string } | null>(null);
+  const [profileData, setProfileData] = useState<ProfileData | null>(null);
+  const [profileCompleted, setProfileCompleted] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
 
   const displayName =
     user?.user_metadata?.full_name ||
@@ -116,6 +128,18 @@ export default function DashboardPage() {
     if (data) setQuota(data);
   }, [user]);
 
+  const fetchProfile = useCallback(async () => {
+    if (!user) return;
+    const { data, error } = await supabase
+      .from("users")
+      .select("profile_data, profile_completed")
+      .eq("id", user.id)
+      .single();
+    if (error) return;
+    if (data?.profile_data) setProfileData(data.profile_data as ProfileData);
+    setProfileCompleted(!!data?.profile_completed);
+  }, [user]);
+
   const fetchWordCount = useCallback(async () => {
     const { count, error } = await supabase
       .from("custom_words")
@@ -139,7 +163,8 @@ export default function DashboardPage() {
     fetchMeetings();
     fetchQuota();
     fetchWordCount();
-  }, [user, fetchProjects, fetchMeetings, fetchQuota, fetchWordCount]);
+    fetchProfile();
+  }, [user, fetchProjects, fetchMeetings, fetchQuota, fetchWordCount, fetchProfile]);
 
   const handleCreateProject = async () => {
     if (!newProjectName.trim() || !user) return;
@@ -382,6 +407,14 @@ export default function DashboardPage() {
             내 사전
           </Link>
           <button
+            onClick={() => {
+              if (!profileCompleted) {
+                router.push("/onboarding");
+              } else {
+                setShowProfile(true);
+                setSelectedMeeting(null);
+              }
+            }}
             className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-notion-text-secondary hover:bg-notion-bg-hover transition-colors w-full text-left"
           >
             <User className="h-3.5 w-3.5" />
@@ -426,13 +459,31 @@ export default function DashboardPage() {
               <ChevronsRight className="h-4 w-4" />
             </button>
           )}
-          <span className="text-sm text-notion-text-secondary">대시보드</span>
+          <span className="text-sm text-notion-text-secondary">
+            {showProfile ? "내 정보" : "대시보드"}
+          </span>
+          {showProfile && (
+            <button
+              onClick={() => setShowProfile(false)}
+              className="ml-auto text-xs text-notion-text-muted hover:text-notion-text-secondary transition-colors"
+            >
+              ← 대시보드로 돌아가기
+            </button>
+          )}
         </div>
 
         {/* Scrollable main area - split into left content + right calendar */}
         <main className="flex-1 flex overflow-hidden">
           {/* Left: main content */}
           <div className="flex-1 overflow-y-auto min-w-0">
+            {showProfile ? (
+              <ProfileView
+                profileData={profileData}
+                displayName={displayName}
+                userEmail={userEmail}
+                onEdit={() => router.push("/onboarding")}
+              />
+            ) : (
             <div className="max-w-[720px] mx-auto px-6 md:px-12 py-10">
               {/* DB warning banner */}
               {!dbReady && (
@@ -546,6 +597,7 @@ export default function DashboardPage() {
                 )}
               </section>
             </div>
+            )}
           </div>
 
           {/* Right: Calendar & Upcoming Meetings */}
@@ -808,6 +860,147 @@ function MiniCalendar() {
             )}
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+/* ===== Profile View Component ===== */
+function ProfileView({
+  profileData,
+  displayName,
+  userEmail,
+  onEdit,
+}: {
+  profileData: ProfileData | null;
+  displayName: string;
+  userEmail: string;
+  onEdit: () => void;
+}) {
+  const coachingLabel = COACHING_STYLES.find(
+    (cs) => cs.value === profileData?.coachingStyle
+  );
+
+  const sections = [
+    {
+      title: "회사 정보",
+      icon: Building2,
+      items: [
+        { label: "기업명", value: profileData?.companyName },
+        { label: "업종", value: profileData?.industry },
+        { label: "매출 규모", value: profileData?.companySize },
+      ],
+    },
+    {
+      title: "내 정보",
+      icon: User,
+      items: [
+        { label: "이름", value: profileData?.displayName || displayName },
+        { label: "이메일", value: userEmail },
+        { label: "부서", value: profileData?.department },
+        { label: "직급", value: profileData?.position },
+        { label: "직무", value: profileData?.role },
+        { label: "세부 직무", value: profileData?.roleDetail },
+      ],
+    },
+    {
+      title: "사용 목적",
+      icon: Target,
+      items: [
+        {
+          label: "주요 사용 용도",
+          value:
+            profileData?.useCases && profileData.useCases.length > 0
+              ? profileData.useCases.join(", ")
+              : undefined,
+          chips: profileData?.useCases,
+        },
+        { label: "주간 미팅 빈도", value: profileData?.meetingFrequency },
+        {
+          label: "주요 미팅 상대방",
+          value:
+            profileData?.clientTypes && profileData.clientTypes.length > 0
+              ? profileData.clientTypes.join(", ")
+              : undefined,
+          chips: profileData?.clientTypes,
+        },
+        {
+          label: "AI 코칭 스타일",
+          value: coachingLabel
+            ? `${coachingLabel.label} — ${coachingLabel.desc}`
+            : undefined,
+        },
+        { label: "주요 취급 제품·서비스", value: profileData?.mainProducts },
+      ],
+    },
+  ];
+
+  return (
+    <div className="max-w-[720px] mx-auto px-6 md:px-12 py-10">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h1 className="text-3xl font-bold text-dark">내 프로필</h1>
+          <p className="text-notion-text-secondary mt-1">
+            AI가 미팅 중 더 정확한 힌트를 제공하기 위해 사용됩니다
+          </p>
+        </div>
+        <button
+          onClick={onEdit}
+          className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-mint rounded-lg hover:bg-mint-dark transition-colors"
+        >
+          <Pencil className="h-3.5 w-3.5" />
+          수정하기
+        </button>
+      </div>
+
+      {/* Profile sections */}
+      <div className="flex flex-col gap-6">
+        {sections.map((section) => {
+          const Icon = section.icon;
+          return (
+            <div
+              key={section.title}
+              className="rounded-lg border border-notion-border bg-white p-5"
+            >
+              <div className="flex items-center gap-2 mb-4">
+                <Icon className="h-4 w-4 text-mint-dark" />
+                <h2 className="text-sm font-semibold text-dark">
+                  {section.title}
+                </h2>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3">
+                {section.items.map((item) => (
+                  <div key={item.label}>
+                    <dt className="text-xs text-notion-text-muted mb-0.5">
+                      {item.label}
+                    </dt>
+                    {"chips" in item && item.chips && item.chips.length > 0 ? (
+                      <dd className="flex flex-wrap gap-1.5">
+                        {item.chips.map((chip) => (
+                          <span
+                            key={chip}
+                            className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium border border-mint/30 bg-mint-light/50 text-mint-dark"
+                          >
+                            {chip}
+                          </span>
+                        ))}
+                      </dd>
+                    ) : (
+                      <dd className="text-sm text-dark">
+                        {item.value || (
+                          <span className="text-notion-text-muted">
+                            미입력
+                          </span>
+                        )}
+                      </dd>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

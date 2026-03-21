@@ -629,6 +629,21 @@ Phase 7 이후 로컬 테스트 중 발견된 버그들을 수정했습니다.
 | `src/components/providers/AuthGuard.tsx` | 수정 — `/onboarding` public path 추가 |
 | `rules.md` | 수정 — 뷰포트 레이아웃 규칙 추가 |
 
+**5. 대시보드 '내 정보' 프로필 연동**
+- 사이드바 "내 정보" 클릭 시 동작 분기:
+  - 온보딩 미완료 → `/onboarding` 페이지로 이동 (기존 입력값 유지)
+  - 온보딩 완료 → 대시보드 내 프로필 뷰 표시 (회사/개인/사용목적 3섹션)
+- `ProfileView` 컴포넌트: 프로필 데이터를 카드 형태로 보여주고, "수정하기" 버튼으로 온보딩 페이지 재진입
+- 프로필 상수/타입을 `src/constants/profileOptions.ts`로 분리 (온보딩+대시보드 공유)
+- `docs/followup_plan.md` 관련 항목 완료 처리
+
+| 파일 | 변경 유형 |
+|------|-----------|
+| `src/constants/profileOptions.ts` | **신규** — 프로필 타입/상수 공유 모듈 |
+| `src/app/dashboard/page.tsx` | 수정 — 프로필 fetch, ProfileView, 내 정보 클릭 핸들러 |
+| `src/app/onboarding/page.tsx` | 수정 — 로컬 타입/상수 → 공유 모듈 import |
+| `docs/followup_plan.md` | 수정 — 내 정보/프로필 항목 완료 처리 |
+
 ---
 
 ## 라이선스
