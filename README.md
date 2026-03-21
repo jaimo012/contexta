@@ -644,6 +644,26 @@ Phase 7 이후 로컬 테스트 중 발견된 버그들을 수정했습니다.
 | `src/app/onboarding/page.tsx` | 수정 — 로컬 타입/상수 → 공유 모듈 import |
 | `docs/followup_plan.md` | 수정 — 내 정보/프로필 항목 완료 처리 |
 
+**6. Supabase 프로필 저장 디버깅 (DB 스키마 + upsert 문제)**
+- **문제 1**: `profile_data`, `profile_completed` 컬럼이 `users` 테이블에 없어 저장 실패
+  - 해결: `database/schema.sql`에 `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` 추가 후 Supabase SQL Editor에서 실행
+- **문제 2**: `upsert` 사용 시 `email`(NOT NULL), `display_name`(NOT NULL) 누락으로 실패
+  - 원인: 트리거(`handle_new_user`)가 자동 생성한 레코드를 `upsert`하면 NOT NULL 제약 위반
+  - 해결: `upsert` → `update().eq("id", user.id)` 변경
+- **교훈**: 트리거로 생성된 레코드는 `insert`/`upsert` 대신 반드시 `update` 사용
+
+**7. 프로필 수정 시 기존 데이터 프리필**
+- **문제**: 프로필 수정 버튼 클릭 시 온보딩 페이지가 빈 폼으로 시작
+- **해결**: `useEffect`로 DB에서 기존 `profile_data` 조회하여 폼 상태에 반영
+- 로딩 스피너 추가 (데이터 로드 중 깜빡임 방지)
+- `rules.md`에 "편집 페이지 진입 시 기존 데이터 로드" 규칙 추가
+
+| 파일 | 변경 유형 |
+|------|-----------|
+| `database/schema.sql` | 수정 — `profile_data`, `profile_completed` 컬럼 추가 |
+| `src/app/onboarding/page.tsx` | 수정 — upsert→update 변경, 기존 데이터 프리필 로직 추가 |
+| `rules.md` | 수정 — Supabase/DB 규칙 섹션 추가 (스키마 변경, upsert vs update, 편집 데이터 로드) |
+
 ---
 
 ## 라이선스
