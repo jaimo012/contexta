@@ -234,7 +234,7 @@ export default function OnboardingPage() {
         </button>
       </header>
 
-      <div className="flex-1 flex flex-col items-center justify-center px-4 py-8">
+      <div className="flex-1 flex flex-col items-center overflow-y-auto px-4 py-8">
         <div className="w-full max-w-lg">
           {/* Bonus banner */}
           <div className="flex items-center gap-3 rounded-lg border border-mint/20 bg-mint-light/50 px-4 py-3 mb-8">
@@ -466,46 +466,49 @@ export default function OnboardingPage() {
             )}
           </div>
 
-          {/* Navigation */}
-          <div className="flex items-center justify-between mt-8 pt-6 border-t border-notion-border">
-            {step > 0 ? (
-              <button
-                onClick={() => setStep(step - 1)}
-                className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-notion-text-secondary rounded-lg hover:bg-notion-bg-hover transition-colors"
-              >
-                <ChevronLeft className="h-4 w-4" />
-                이전
-              </button>
-            ) : (
-              <div />
-            )}
+        </div>
+      </div>
 
-            {step < 2 ? (
-              <button
-                onClick={() => setStep(step + 1)}
-                disabled={!canProceed}
-                className="flex items-center gap-1.5 px-5 py-2.5 text-sm font-medium text-white bg-dark rounded-lg hover:bg-dark/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              >
-                다음
-                <ChevronRight className="h-4 w-4" />
-              </button>
-            ) : (
-              <button
-                onClick={handleSave}
-                disabled={!canProceed || isSaving}
-                className="flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white bg-mint rounded-lg hover:bg-mint-dark disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              >
-                {isSaving ? (
-                  "저장 중..."
-                ) : (
-                  <>
-                    <Sparkles className="h-4 w-4" />
-                    완료하고 +{BONUS_MINUTES}분 받기
-                  </>
-                )}
-              </button>
-            )}
-          </div>
+      {/* Navigation - fixed bottom */}
+      <div className="shrink-0 border-t border-notion-border bg-notion-bg px-6 py-4">
+        <div className="mx-auto max-w-lg flex items-center justify-between">
+          {step > 0 ? (
+            <button
+              onClick={() => setStep(step - 1)}
+              className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-notion-text-secondary rounded-lg hover:bg-notion-bg-hover transition-colors"
+            >
+              <ChevronLeft className="h-4 w-4" />
+              이전
+            </button>
+          ) : (
+            <div />
+          )}
+
+          {step < 2 ? (
+            <button
+              onClick={() => setStep(step + 1)}
+              disabled={!canProceed}
+              className="flex items-center gap-1.5 px-5 py-2.5 text-sm font-medium text-white bg-dark rounded-lg hover:bg-dark/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              다음
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          ) : (
+            <button
+              onClick={handleSave}
+              disabled={!canProceed || isSaving}
+              className="flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white bg-mint rounded-lg hover:bg-mint-dark disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              {isSaving ? (
+                "저장 중..."
+              ) : (
+                <>
+                  <Sparkles className="h-4 w-4" />
+                  완료하고 +{BONUS_MINUTES}분 받기
+                </>
+              )}
+            </button>
+          )}
         </div>
       </div>
     </div>
