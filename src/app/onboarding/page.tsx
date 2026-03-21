@@ -216,7 +216,7 @@ export default function OnboardingPage() {
         : profile.useCases.length > 0;
 
   return (
-    <div className="min-h-screen bg-notion-bg flex flex-col">
+    <div className="h-dvh bg-notion-bg flex flex-col overflow-hidden">
       {/* Top bar */}
       <header className="flex items-center justify-between h-12 px-6 border-b border-notion-border shrink-0">
         <div className="flex items-center gap-2">
