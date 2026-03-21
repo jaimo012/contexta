@@ -135,7 +135,10 @@ export default function DashboardPage() {
       .select("profile_data, profile_completed")
       .eq("id", user.id)
       .single();
-    if (error) return;
+    if (error) {
+      console.warn("[Dashboard] 프로필 조회 실패:", error.message);
+      return;
+    }
     if (data?.profile_data) setProfileData(data.profile_data as ProfileData);
     setProfileCompleted(!!data?.profile_completed);
   }, [user]);
