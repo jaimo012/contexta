@@ -803,6 +803,33 @@ retrySummary() → /api/summary 재호출
 | `src/app/dashboard/page.tsx` | 수정 — 설정 버튼 Link 연결 |
 | `docs/followup_plan.md` | 수정 — 설정 페이지 완료 처리 |
 
+### 2026-04-04: 다가오는 미팅 일정 관리 + 미팅 추가 버튼 구현
+
+#### 완료한 작업
+
+**1. 다가오는 미팅 실제 기능 구현**
+- 하드코딩된 4개 플레이스홀더 카드 제거
+- localStorage 기반 미팅 일정 CRUD 구현
+- 지난 일정 자동 정리 (오늘 이전 일정 필터)
+- 시간순 자동 정렬
+- 오늘 미팅 mint 하이라이트, 내일/이후 날짜 표시
+
+**2. 미팅 일정 추가 모달**
+- 제목, 일시(datetime-local), 소요 시간(30분~2시간), 참석자 수, 장소 입력
+- 필수 필드 검증 (제목 + 일시)
+- 캘린더 옆 + 버튼 클릭 시 모달 오픈
+
+**3. 미팅 일정 삭제**
+- UpcomingMeetingCard에 호버 시 삭제(X) 버튼 표시
+- 빈 상태 UI ("예정된 미팅이 없습니다" + 추가 링크)
+
+#### 변경된 파일 목록
+
+| 파일 | 변경 유형 |
+|------|-----------|
+| `src/app/dashboard/page.tsx` | 수정 — ScheduledMeeting 타입, CRUD 로직, 모달, UpcomingMeetingCard 삭제 기능 |
+| `docs/followup_plan.md` | 수정 — 다가오는 미팅, 미팅 추가 버튼 완료 처리 |
+
 ---
 
 ## 라이선스

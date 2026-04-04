@@ -63,6 +63,15 @@ interface Meeting {
   project_id: string | null;
 }
 
+interface ScheduledMeeting {
+  id: string;
+  title: string;
+  datetime: string; // ISO string
+  duration: string;
+  location?: string;
+  attendees?: number;
+}
+
 function formatSeconds(totalSeconds: number): string {
   const h = Math.floor(totalSeconds / 3600);
   const m = Math.floor((totalSeconds % 3600) / 60);
@@ -92,6 +101,9 @@ export default function DashboardPage() {
   const [showProfile, setShowProfile] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedProjectFilter, setSelectedProjectFilter] = useState<string | null>(null);
+  const [scheduledMeetings, setScheduledMeetings] = useState<ScheduledMeeting[]>([]);
+  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
+  const [newSchedule, setNewSchedule] = useState({ title: "", datetime: "", duration: "1시간", location: "", attendees: "" });
 
   const displayName =
     user?.user_metadata?.full_name ||
@@ -170,6 +182,46 @@ export default function DashboardPage() {
     fetchWordCount();
     fetchProfile();
   }, [user, fetchProjects, fetchMeetings, fetchQuota, fetchWordCount, fetchProfile]);
+
+  // Load scheduled meetings from localStorage
+  useEffect(() => {
+    const stored = localStorage.getItem("contexta_scheduled_meetings");
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored) as ScheduledMeeting[];
+        // Filter out past meetings (keep only future + today)
+        const now = new Date();
+        now.setHours(0, 0, 0, 0);
+        const future = parsed.filter((m) => new Date(m.datetime) >= now);
+        setScheduledMeetings(future.sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime()));
+      } catch { /* ignore */ }
+    }
+  }, []);
+
+  const saveScheduledMeetings = (updated: ScheduledMeeting[]) => {
+    const sorted = updated.sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime());
+    setScheduledMeetings(sorted);
+    localStorage.setItem("contexta_scheduled_meetings", JSON.stringify(sorted));
+  };
+
+  const handleCreateSchedule = () => {
+    if (!newSchedule.title.trim() || !newSchedule.datetime) return;
+    const entry: ScheduledMeeting = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+      title: newSchedule.title.trim(),
+      datetime: newSchedule.datetime,
+      duration: newSchedule.duration,
+      location: newSchedule.location.trim() || undefined,
+      attendees: newSchedule.attendees ? Number(newSchedule.attendees) : undefined,
+    };
+    saveScheduledMeetings([...scheduledMeetings, entry]);
+    setNewSchedule({ title: "", datetime: "", duration: "1시간", location: "", attendees: "" });
+    setIsScheduleModalOpen(false);
+  };
+
+  const handleDeleteSchedule = (id: string) => {
+    saveScheduledMeetings(scheduledMeetings.filter((m) => m.id !== id));
+  };
 
   const handleCreateProject = async () => {
     if (!newProjectName.trim() || !user) return;
@@ -714,44 +766,62 @@ export default function DashboardPage() {
                       다가오는 미팅
                     </h3>
                   </div>
-                  <button className="rounded p-0.5 text-notion-text-muted hover:bg-notion-bg-hover hover:text-notion-text transition-colors" title="미팅 추가">
+                  <button
+                    onClick={() => setIsScheduleModalOpen(true)}
+                    className="rounded p-0.5 text-notion-text-muted hover:bg-notion-bg-hover hover:text-notion-text transition-colors"
+                    title="미팅 추가"
+                  >
                     <Plus className="h-3.5 w-3.5" />
                   </button>
                 </div>
 
                 <div className="flex flex-col gap-2">
-                  {/* Placeholder upcoming meetings */}
-                  <UpcomingMeetingCard
-                    title="삼성SDS 클라우드 전환 2차"
-                    time="오늘 오후 3:00"
-                    duration="1시간"
-                    attendees={3}
-                    isToday
-                  />
-                  <UpcomingMeetingCard
-                    title="LG CNS 보안 솔루션 데모"
-                    time="내일 오전 10:00"
-                    duration="30분"
-                    location="Google Meet"
-                    attendees={5}
-                  />
-                  <UpcomingMeetingCard
-                    title="현대오토에버 인프라 논의"
-                    time="3월 21일 (금) 오후 2:00"
-                    duration="1시간"
-                    location="회의실 B"
-                    attendees={4}
-                  />
-                  <UpcomingMeetingCard
-                    title="SK C&C 분기 리뷰"
-                    time="3월 24일 (월) 오전 11:00"
-                    duration="1시간 30분"
-                    attendees={6}
-                  />
+                  {scheduledMeetings.length === 0 ? (
+                    <div className="text-center py-6">
+                      <Calendar className="h-6 w-6 text-notion-border mx-auto mb-2" />
+                      <p className="text-xs text-notion-text-muted">
+                        예정된 미팅이 없습니다
+                      </p>
+                      <button
+                        onClick={() => setIsScheduleModalOpen(true)}
+                        className="mt-2 text-xs text-mint-dark hover:text-mint transition-colors"
+                      >
+                        + 미팅 추가
+                      </button>
+                    </div>
+                  ) : (
+                    scheduledMeetings.map((sm) => {
+                      const dt = new Date(sm.datetime);
+                      const now = new Date();
+                      const isToday = dt.toDateString() === now.toDateString();
+                      const tomorrow = new Date(now);
+                      tomorrow.setDate(tomorrow.getDate() + 1);
+                      const isTomorrow = dt.toDateString() === tomorrow.toDateString();
+
+                      const timeStr = isToday
+                        ? `오늘 ${dt.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })}`
+                        : isTomorrow
+                          ? `내일 ${dt.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })}`
+                          : `${dt.toLocaleDateString("ko-KR", { month: "short", day: "numeric", weekday: "short" })} ${dt.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })}`;
+
+                      return (
+                        <UpcomingMeetingCard
+                          key={sm.id}
+                          title={sm.title}
+                          time={timeStr}
+                          duration={sm.duration}
+                          location={sm.location}
+                          attendees={sm.attendees}
+                          isToday={isToday}
+                          onDelete={() => handleDeleteSchedule(sm.id)}
+                        />
+                      );
+                    })
+                  )}
                 </div>
 
                 <p className="text-[11px] text-notion-text-muted mt-3 text-center">
-                  Google Calendar 연동 시 자동으로 표시됩니다
+                  Google Calendar 연동 시 자동으로 동기화됩니다
                 </p>
               </section>
             </div>
@@ -892,6 +962,99 @@ export default function DashboardPage() {
                 className="px-4 py-2 text-sm font-medium text-white bg-mint rounded-lg hover:bg-mint-dark disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {isCreating ? "생성 중..." : "생성"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Schedule meeting modal */}
+      {isScheduleModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
+          <div className="w-full max-w-sm mx-4 rounded-xl bg-white p-6 shadow-xl border border-notion-border animate-fade-in">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-base font-semibold text-dark">미팅 일정 추가</h3>
+              <button
+                onClick={() => setIsScheduleModalOpen(false)}
+                className="rounded-md p-1 text-notion-text-muted hover:bg-notion-bg-hover transition-colors"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="flex flex-col gap-3">
+              <div>
+                <label className="text-xs font-medium text-notion-text-secondary mb-1 block">미팅 제목 *</label>
+                <input
+                  type="text"
+                  value={newSchedule.title}
+                  onChange={(e) => setNewSchedule((s) => ({ ...s, title: e.target.value }))}
+                  placeholder="예: 삼성SDS 클라우드 전환 미팅"
+                  className="w-full rounded-lg border border-notion-border px-3 py-2 text-sm text-dark placeholder-notion-text-muted focus:border-mint focus:ring-1 focus:ring-mint outline-none transition-colors"
+                  autoFocus
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-notion-text-secondary mb-1 block">일시 *</label>
+                <input
+                  type="datetime-local"
+                  value={newSchedule.datetime}
+                  onChange={(e) => setNewSchedule((s) => ({ ...s, datetime: e.target.value }))}
+                  className="w-full rounded-lg border border-notion-border px-3 py-2 text-sm text-dark focus:border-mint focus:ring-1 focus:ring-mint outline-none transition-colors"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-medium text-notion-text-secondary mb-1 block">소요 시간</label>
+                  <select
+                    value={newSchedule.duration}
+                    onChange={(e) => setNewSchedule((s) => ({ ...s, duration: e.target.value }))}
+                    className="w-full rounded-lg border border-notion-border px-3 py-2 text-sm text-dark focus:border-mint outline-none transition-colors"
+                  >
+                    <option value="30분">30분</option>
+                    <option value="1시간">1시간</option>
+                    <option value="1시간 30분">1시간 30분</option>
+                    <option value="2시간">2시간</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-notion-text-secondary mb-1 block">참석자 수</label>
+                  <input
+                    type="number"
+                    value={newSchedule.attendees}
+                    onChange={(e) => setNewSchedule((s) => ({ ...s, attendees: e.target.value }))}
+                    placeholder="0"
+                    min="0"
+                    className="w-full rounded-lg border border-notion-border px-3 py-2 text-sm text-dark placeholder-notion-text-muted focus:border-mint focus:ring-1 focus:ring-mint outline-none transition-colors"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-notion-text-secondary mb-1 block">장소</label>
+                <input
+                  type="text"
+                  value={newSchedule.location}
+                  onChange={(e) => setNewSchedule((s) => ({ ...s, location: e.target.value }))}
+                  placeholder="예: Google Meet, 회의실 A"
+                  className="w-full rounded-lg border border-notion-border px-3 py-2 text-sm text-dark placeholder-notion-text-muted focus:border-mint focus:ring-1 focus:ring-mint outline-none transition-colors"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 mt-5">
+              <button
+                onClick={() => {
+                  setIsScheduleModalOpen(false);
+                  setNewSchedule({ title: "", datetime: "", duration: "1시간", location: "", attendees: "" });
+                }}
+                className="px-4 py-2 text-sm font-medium text-notion-text-secondary rounded-lg hover:bg-notion-bg-hover transition-colors"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleCreateSchedule}
+                disabled={!newSchedule.title.trim() || !newSchedule.datetime}
+                className="px-4 py-2 text-sm font-medium text-white bg-mint rounded-lg hover:bg-mint-dark disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                추가
               </button>
             </div>
           </div>
@@ -1115,6 +1278,7 @@ function UpcomingMeetingCard({
   location,
   attendees,
   isToday,
+  onDelete,
 }: {
   title: string;
   time: string;
@@ -1122,10 +1286,11 @@ function UpcomingMeetingCard({
   location?: string;
   attendees?: number;
   isToday?: boolean;
+  onDelete?: () => void;
 }) {
   return (
     <div
-      className={`rounded-lg border p-3 hover:bg-notion-bg-hover transition-colors cursor-pointer ${
+      className={`group rounded-lg border p-3 hover:bg-notion-bg-hover transition-colors ${
         isToday
           ? "border-mint/30 bg-mint-light/50"
           : "border-notion-border bg-notion-bg"
@@ -1138,7 +1303,18 @@ function UpcomingMeetingCard({
           }`}
         />
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-dark truncate">{title}</p>
+          <div className="flex items-start justify-between gap-1">
+            <p className="text-sm font-medium text-dark truncate">{title}</p>
+            {onDelete && (
+              <button
+                onClick={onDelete}
+                className="rounded p-0.5 text-notion-text-muted opacity-0 group-hover:opacity-100 hover:text-pink transition-all shrink-0"
+                title="삭제"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            )}
+          </div>
           <p className={`text-xs mt-0.5 ${isToday ? "text-mint-dark font-medium" : "text-notion-text-secondary"}`}>
             {time} · {duration}
           </p>
