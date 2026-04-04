@@ -742,6 +742,35 @@ retrySummary() → /api/summary 재호출
 | `src/components/providers/AuthProvider.tsx` | 수정 — getSession 5초 타임아웃 |
 | `src/app/meeting/page.tsx` | 수정 — Toast, PostMeetingResult, useNetworkStatus 연동 |
 
+### 2026-04-04: 미팅 검색 + 미니 캘린더 실데이터 연동
+
+#### 완료한 작업
+
+**1. 미팅 검색 기능 구현**
+- 사이드바 검색바를 실제 `<input>`으로 전환 (기존: `<span>` 플레이스홀더)
+- 미팅 제목 + 프로젝트명으로 실시간 필터링
+- 검색어 지우기(X) 버튼 + 포커스 시 mint 테두리 하이라이트
+- 검색 결과 건수 표시
+- 검색 결과 없을 때 빈 상태 UI + "필터 초기화" 버튼
+
+**2. 프로젝트별 미팅 필터링**
+- 사이드바 프로젝트 클릭 시 해당 프로젝트 미팅만 필터링
+- 활성 프로젝트 mint 하이라이트
+- "필터 해제" 버튼으로 전체 미팅 다시 보기
+- 검색 + 프로젝트 필터 복합 적용 가능
+
+**3. 미니 캘린더 실데이터 연동**
+- 하드코딩된 미팅일(`meetingDays`) 제거
+- 실제 DB 미팅 `created_at` 기준으로 현재 월의 미팅 날짜 표시
+- `MiniCalendar` 컴포넌트에 `meetings` props 추가
+
+#### 변경된 파일 목록
+
+| 파일 | 변경 유형 |
+|------|-----------|
+| `src/app/dashboard/page.tsx` | 수정 — 검색 input, 프로젝트 필터, filteredMeetings, MiniCalendar 실데이터 |
+| `docs/followup_plan.md` | 수정 — 미팅 검색, 미니 캘린더 완료 처리 |
+
 ---
 
 ## 라이선스

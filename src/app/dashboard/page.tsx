@@ -90,6 +90,8 @@ export default function DashboardPage() {
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
   const [profileCompleted, setProfileCompleted] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedProjectFilter, setSelectedProjectFilter] = useState<string | null>(null);
 
   const displayName =
     user?.user_metadata?.full_name ||
@@ -217,6 +219,22 @@ export default function DashboardPage() {
     return projects.find((p) => p.id === projectId)?.name ?? null;
   };
 
+  // Filter meetings by search query and project
+  const filteredMeetings = meetings.filter((meeting) => {
+    // Project filter
+    if (selectedProjectFilter && meeting.project_id !== selectedProjectFilter) {
+      return false;
+    }
+    // Search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      const title = (meeting.title || "").toLowerCase();
+      const projectName = (getProjectName(meeting.project_id) || "").toLowerCase();
+      return title.includes(query) || projectName.includes(query);
+    }
+    return true;
+  });
+
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-notion-bg">
@@ -260,11 +278,25 @@ export default function DashboardPage() {
           </Link>
         </div>
 
-        {/* Search (placeholder) */}
+        {/* Search */}
         <div className="px-3 mb-2">
-          <div className="flex items-center gap-2 rounded-md border border-notion-border bg-notion-bg px-2.5 py-1.5 text-xs text-notion-text-muted">
-            <Search className="h-3.5 w-3.5" />
-            <span>미팅 검색...</span>
+          <div className="flex items-center gap-2 rounded-md border border-notion-border bg-notion-bg px-2.5 py-1.5 text-xs text-notion-text-muted focus-within:border-mint focus-within:ring-1 focus-within:ring-mint transition-colors">
+            <Search className="h-3.5 w-3.5 shrink-0" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="미팅 검색..."
+              className="w-full bg-transparent text-xs text-dark placeholder-notion-text-muted outline-none"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="shrink-0 rounded p-0.5 hover:bg-notion-bg-hover transition-colors"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            )}
           </div>
         </div>
 
@@ -283,25 +315,47 @@ export default function DashboardPage() {
             </button>
           </div>
           <div className="flex flex-col">
-            {projects.map((project) => (
-              <div
-                key={project.id}
-                className="group flex items-center gap-2 rounded-md px-2 py-1 text-sm text-notion-text-secondary hover:bg-notion-bg-hover transition-colors cursor-pointer"
+            {selectedProjectFilter && (
+              <button
+                onClick={() => setSelectedProjectFilter(null)}
+                className="flex items-center gap-2 rounded-md px-2 py-1 text-xs text-notion-text-muted hover:bg-notion-bg-hover transition-colors mb-0.5"
               >
-                <FolderOpen className="h-3.5 w-3.5 shrink-0" />
-                <span className="truncate flex-1" title={project.name}>
-                  {project.name}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => handleDeleteProject(project.id, project.name)}
-                  className="rounded p-0.5 text-notion-text-muted opacity-0 group-hover:opacity-100 hover:text-pink transition-all"
-                  title="삭제"
+                <X className="h-3 w-3" />
+                필터 해제
+              </button>
+            )}
+            {projects.map((project) => {
+              const isActive = selectedProjectFilter === project.id;
+              return (
+                <div
+                  key={project.id}
+                  onClick={() =>
+                    setSelectedProjectFilter(isActive ? null : project.id)
+                  }
+                  className={`group flex items-center gap-2 rounded-md px-2 py-1 text-sm transition-colors cursor-pointer ${
+                    isActive
+                      ? "bg-mint-light text-mint-dark font-medium"
+                      : "text-notion-text-secondary hover:bg-notion-bg-hover"
+                  }`}
                 >
-                  <X className="h-3 w-3" />
-                </button>
-              </div>
-            ))}
+                  <FolderOpen className="h-3.5 w-3.5 shrink-0" />
+                  <span className="truncate flex-1" title={project.name}>
+                    {project.name}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteProject(project.id, project.name);
+                    }}
+                    className="rounded p-0.5 text-notion-text-muted opacity-0 group-hover:opacity-100 hover:text-pink transition-all"
+                    title="삭제"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              );
+            })}
           </div>
         </div>
 
@@ -331,12 +385,16 @@ export default function DashboardPage() {
               <p className="text-xs text-notion-text-muted py-2 px-2">
                 아직 미팅 기록이 없습니다.
               </p>
+            ) : filteredMeetings.length === 0 ? (
+              <p className="text-xs text-notion-text-muted py-2 px-2">
+                검색 결과가 없습니다.
+              </p>
             ) : (
               <div className="flex flex-col">
-                {meetings.map((meeting) => (
+                {filteredMeetings.map((meeting) => (
                   <div
                     key={meeting.id}
-                    onClick={() => setSelectedMeeting({ title: meeting.title || "제목 없는 미팅", summary: meeting.summary, date: new Date(meeting.created_at).toLocaleDateString("ko-KR") })}
+                    onClick={() => setSelectedMeeting({ title: meeting.title || "제목 없는 미팅", summary: meeting.summary, date: new Date(meeting.created_at).toLocaleDateString("ko-KR"), project: getProjectName(meeting.project_id) || undefined })}
                     className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-notion-bg-hover transition-colors cursor-pointer"
                   >
                     <FileText className="h-3.5 w-3.5 text-notion-text-muted shrink-0" />
@@ -521,9 +579,20 @@ export default function DashboardPage() {
 
               {/* Recent meetings - main content area */}
               <section>
-                <h2 className="text-xs font-semibold text-notion-text-secondary uppercase tracking-wider mb-3">
-                  최근 미팅
-                </h2>
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="text-xs font-semibold text-notion-text-secondary uppercase tracking-wider">
+                    {selectedProjectFilter
+                      ? `${getProjectName(selectedProjectFilter) || "프로젝트"} 미팅`
+                      : searchQuery
+                        ? `"${searchQuery}" 검색 결과`
+                        : "최근 미팅"}
+                  </h2>
+                  {(searchQuery || selectedProjectFilter) && (
+                    <span className="text-xs text-notion-text-muted">
+                      {filteredMeetings.length}건
+                    </span>
+                  )}
+                </div>
                 {meetings.length === 0 ? (
                   <div className="flex flex-col">
                     {/* CTA banner */}
@@ -567,9 +636,27 @@ export default function DashboardPage() {
                       예시 데이터입니다. 실제 미팅을 녹음하면 여기에 회의록이 쌓입니다.
                     </p>
                   </div>
+                ) : filteredMeetings.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-12">
+                    <Search className="h-8 w-8 text-notion-border mb-3" />
+                    <p className="text-sm text-notion-text-muted">
+                      {searchQuery
+                        ? `"${searchQuery}"에 대한 검색 결과가 없습니다`
+                        : "해당 프로젝트의 미팅이 없습니다"}
+                    </p>
+                    <button
+                      onClick={() => {
+                        setSearchQuery("");
+                        setSelectedProjectFilter(null);
+                      }}
+                      className="mt-2 text-xs text-mint-dark hover:text-mint transition-colors"
+                    >
+                      필터 초기화
+                    </button>
+                  </div>
                 ) : (
                   <div className="flex flex-col">
-                    {meetings.map((meeting) => {
+                    {filteredMeetings.map((meeting) => {
                       const projectName = getProjectName(meeting.project_id);
                       return (
                         <div
@@ -614,7 +701,7 @@ export default function DashboardPage() {
                     캘린더
                   </h3>
                 </div>
-                <MiniCalendar />
+                <MiniCalendar meetings={meetings} />
               </section>
 
               {/* Upcoming Meetings */}
@@ -814,7 +901,7 @@ export default function DashboardPage() {
 }
 
 /* ===== Mini Calendar Component ===== */
-function MiniCalendar() {
+function MiniCalendar({ meetings }: { meetings: Meeting[] }) {
   const today = new Date();
   const year = today.getFullYear();
   const month = today.getMonth();
@@ -826,8 +913,18 @@ function MiniCalendar() {
   const firstDay = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
 
-  // Placeholder: days with meetings (dots)
-  const meetingDays = new Set([todayDate, todayDate + 1, todayDate + 2, todayDate + 5]);
+  // Calculate days with actual meetings in current month
+  const meetingDays = new Set(
+    meetings
+      .map((m) => {
+        const d = new Date(m.created_at);
+        if (d.getFullYear() === year && d.getMonth() === month) {
+          return d.getDate();
+        }
+        return null;
+      })
+      .filter((d): d is number => d !== null)
+  );
 
   const cells: (number | null)[] = [];
   for (let i = 0; i < firstDay; i++) cells.push(null);
