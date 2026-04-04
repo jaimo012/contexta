@@ -664,6 +664,84 @@ Phase 7 이후 로컬 테스트 중 발견된 버그들을 수정했습니다.
 | `src/app/onboarding/page.tsx` | 수정 — upsert→update 변경, 기존 데이터 프리필 로직 추가 |
 | `rules.md` | 수정 — Supabase/DB 규칙 섹션 추가 (스키마 변경, upsert vs update, 편집 데이터 로드) |
 
+### 2026-04-04: 에러 핸들링 고도화 (기술 부채 해소)
+
+#### 완료한 작업
+
+**1. Zustand 에러 상태 확장**
+- `sttErrorCount`, `sttPaused`, `lastError`, `summaryError` 4개 상태 추가
+- `setSttErrorCount`, `setSttPaused`, `setLastError`, `clearLastError`, `setSummaryError` 5개 액션 추가
+- `AppError` 인터페이스 정의 (type, message, timestamp, retryable)
+
+**2. Toast 알림 컴포넌트 (`components/ui/Toast.tsx`)**
+- 하단 중앙 고정 위치, 에러 타입별 색상 (network=빨강, stt=노랑, hint=파랑, summary=빨강)
+- Lucide 아이콘 연동, 자동 닫힘 (6초), 네트워크 에러는 복구 전까지 유지
+- 재시도 가능한 에러에 RefreshCw 버튼 표시
+- `alert()` 의존 제거를 위한 기반 마련
+
+**3. 네트워크 상태 감지 훅 (`hooks/useNetworkStatus.ts`)**
+- `online`/`offline` 이벤트 리스너로 실시간 네트워크 상태 감지
+- 녹음 중 네트워크 단절 시 자동으로 Toast 경고 + STT 일시 정지
+- 네트워크 복구 시 자동으로 STT 재개 + 에러 카운트 초기화
+
+**4. STT 에러 핸들링 강화 (`hooks/useAudioRecorder.ts`)**
+- `AbortController` + 10초 타임아웃 추가 (기존: 타임아웃 없음)
+- 연속 실패 카운터: 5회 연속 실패 시 STT 자동 일시 정지 + Toast 알림
+- 성공 시 에러 카운트 자동 리셋
+- `sttPaused` 상태 체크로 불필요한 요청 차단
+
+**5. 회의록 생성 에러 핸들링 (`components/meeting/TopBar.tsx`)**
+- `generateSummary` 함수 분리 (재시도 가능하도록)
+- 60초 타임아웃 추가
+- 실패 시 `summaryError` 상태 + Toast 알림 (기존: 무응답 return)
+- 타임아웃 vs 일반 에러 구분 메시지
+
+**6. 회의록 재시도 UI (`components/meeting/PostMeetingResult.tsx`)**
+- `summaryError` 상태일 때 AlertTriangle 아이콘 + "재시도" 버튼 표시
+- `onRetrySummary` 콜백으로 meeting 페이지에서 재시도 로직 연결
+
+**7. AI 힌트 에러 피드백 (`hooks/useAiHint.ts`)**
+- 타임아웃/일반 에러 시 Toast 알림 추가 (기존: console.log만)
+- 비차단(non-blocking) 알림 — 자동 재시도는 기존 주기 로직에 의존
+
+**8. Auth 타임아웃 (`components/providers/AuthProvider.tsx`)**
+- Supabase `getSession()` 5초 타임아웃 추가
+- Supabase 서버 비응답 시에도 로딩 스피너 해제 → 공개 페이지 정상 렌더링
+
+#### 에러 핸들링 구조
+
+```
+[네트워크 단절] → useNetworkStatus → setLastError(network) + setSttPaused(true)
+     ↓ 복구
+clearLastError + setSttPaused(false) + setSttErrorCount(0)
+
+[STT 실패] → sendChunkToSTT catch → sttErrorCount += 1
+     ↓ 5회 연속
+setSttPaused(true) + setLastError(stt, retryable)
+     ↓ Toast "재시도" 클릭
+setSttPaused(false) + setSttErrorCount(0)
+
+[회의록 실패] → handleStop catch → setSummaryError(true) + setLastError(summary)
+     ↓ PostMeetingResult "재시도" 클릭
+retrySummary() → /api/summary 재호출
+
+[힌트 실패] → fetchHint catch → setLastError(hint) → 6초 후 자동 닫힘
+```
+
+#### 변경된 파일 목록
+
+| 파일 | 변경 유형 |
+|------|-----------|
+| `src/store/useMeetingStore.ts` | 수정 — 에러 상태/액션 4+5개 추가, AppError 인터페이스 |
+| `src/components/ui/Toast.tsx` | **신규** — 글로벌 Toast 알림 컴포넌트 |
+| `src/hooks/useNetworkStatus.ts` | **신규** — 네트워크 상태 감지 훅 |
+| `src/hooks/useAudioRecorder.ts` | 수정 — STT 타임아웃, 연속 실패 감지, 자동 일시정지 |
+| `src/hooks/useAiHint.ts` | 수정 — 실패 시 Toast 알림 추가 |
+| `src/components/meeting/TopBar.tsx` | 수정 — generateSummary 분리, 타임아웃, 에러 피드백 |
+| `src/components/meeting/PostMeetingResult.tsx` | 수정 — summaryError 재시도 UI |
+| `src/components/providers/AuthProvider.tsx` | 수정 — getSession 5초 타임아웃 |
+| `src/app/meeting/page.tsx` | 수정 — Toast, PostMeetingResult, useNetworkStatus 연동 |
+
 ---
 
 ## 라이선스

@@ -53,10 +53,21 @@ export function useAiHint() {
         console.log(`[HINT] 💡 "${data.hint}"`);
       }
     } catch (err) {
+      const { setLastError } = useMeetingStore.getState();
       if (err instanceof Error && err.name === "AbortError") {
         console.warn("[HINT] 힌트 요청 타임아웃");
+        setLastError({
+          type: "hint",
+          message: "AI 힌트 요청이 시간 초과되었습니다. 잠시 후 자동으로 재시도합니다.",
+          timestamp: Date.now(),
+        });
       } else {
         console.error("[HINT] 힌트 요청 실패:", err);
+        setLastError({
+          type: "hint",
+          message: "AI 힌트를 가져올 수 없습니다. 네트워크를 확인해 주세요.",
+          timestamp: Date.now(),
+        });
       }
     } finally {
       isFetchingRef.current = false;

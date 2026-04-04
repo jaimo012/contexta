@@ -6,6 +6,8 @@ import { apiUrl } from "@/utils/apiUrl";
 
 const VOLUME_THRESHOLD = 18;
 const SILENCE_DEBOUNCE_MS = 1500;
+const STT_TIMEOUT_MS = 10_000;
+const MAX_STT_FAILURES = 5;
 
 const AudioContextCompat =
   typeof window !== "undefined"
@@ -94,6 +96,11 @@ export function useAudioRecorder() {
 
   const sendChunkToSTT = useCallback(async (chunk: Blob) => {
     if (isSendingRef.current) return;
+
+    // Check if STT is paused due to consecutive failures or network issues
+    const { sttPaused } = useMeetingStore.getState();
+    if (sttPaused) return;
+
     isSendingRef.current = true;
 
     try {
@@ -101,7 +108,16 @@ export function useAudioRecorder() {
       const formData = new FormData();
       formData.append("audio", chunk, `chunk.${ext}`);
 
-      const res = await fetch(apiUrl("/api/stt"), { method: "POST", body: formData });
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), STT_TIMEOUT_MS);
+
+      const res = await fetch(apiUrl("/api/stt"), {
+        method: "POST",
+        body: formData,
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+
       const data = await res.json();
 
       if (res.ok && data.text && data.text.trim() !== "") {
@@ -112,8 +128,33 @@ export function useAudioRecorder() {
         });
         console.log(`[STT] "${data.text}"`);
       }
+
+      // Success: reset error count
+      const { sttErrorCount } = useMeetingStore.getState();
+      if (sttErrorCount > 0) {
+        useMeetingStore.getState().setSttErrorCount(0);
+      }
     } catch (err) {
-      console.error("[STT] 전송 실패:", err);
+      const store = useMeetingStore.getState();
+      const newCount = store.sttErrorCount + 1;
+      store.setSttErrorCount(newCount);
+
+      if (err instanceof Error && err.name === "AbortError") {
+        console.warn("[STT] 요청 타임아웃 (10초 초과)");
+      } else {
+        console.error("[STT] 전송 실패:", err);
+      }
+
+      if (newCount >= MAX_STT_FAILURES) {
+        store.setSttPaused(true);
+        store.setLastError({
+          type: "stt",
+          message: `음성 인식이 ${MAX_STT_FAILURES}회 연속 실패하여 일시 중지되었습니다. 네트워크를 확인해 주세요.`,
+          timestamp: Date.now(),
+          retryable: true,
+        });
+        console.warn(`[STT] ${MAX_STT_FAILURES}회 연속 실패 — STT 일시 중지`);
+      }
     } finally {
       isSendingRef.current = false;
     }

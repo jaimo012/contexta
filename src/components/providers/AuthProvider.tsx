@@ -48,8 +48,19 @@ export default function AuthProvider({
       if (!user) ensuredRef.current = false;
     };
 
+    // Timeout to prevent indefinite loading if Supabase is unreachable
+    const authTimeout = setTimeout(() => {
+      setUser(null);
+      setIsLoading(false);
+    }, 5000);
+
     supabase.auth.getSession().then(({ data: { session } }) => {
+      clearTimeout(authTimeout);
       syncSession(session);
+    }).catch(() => {
+      clearTimeout(authTimeout);
+      setUser(null);
+      setIsLoading(false);
     });
 
     const {

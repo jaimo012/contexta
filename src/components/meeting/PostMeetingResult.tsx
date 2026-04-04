@@ -5,13 +5,18 @@ import Link from "next/link";
 import Markdown from "react-markdown";
 import { useMeetingStore } from "@/store/useMeetingStore";
 import { downloadAsTxt, copyToClipboard } from "@/utils/exportUtils";
-import { X, Copy, Download, ArrowLeft, Mic } from "lucide-react";
+import { X, Copy, Download, ArrowLeft, Mic, RefreshCw, AlertTriangle } from "lucide-react";
 
-export default function PostMeetingResult() {
+interface PostMeetingResultProps {
+  onRetrySummary?: () => void;
+}
+
+export default function PostMeetingResult({ onRetrySummary }: PostMeetingResultProps) {
   const isMeetingEnded = useMeetingStore((s) => s.isMeetingEnded);
   const isGeneratingMinutes = useMeetingStore((s) => s.isGeneratingMinutes);
   const finalMinutes = useMeetingStore((s) => s.finalMinutes);
   const isSavedToDb = useMeetingStore((s) => s.isSavedToDb);
+  const summaryError = useMeetingStore((s) => s.summaryError);
   const setMeetingEnded = useMeetingStore((s) => s.setMeetingEnded);
 
   useEffect(() => {
@@ -60,6 +65,37 @@ export default function PostMeetingResult() {
             <article className="prose prose-sm prose-neutral max-w-none [&_h1]:text-dark [&_h2]:text-dark [&_h3]:text-dark [&_p]:text-notion-text [&_li]:text-notion-text [&_strong]:text-dark">
               <Markdown>{finalMinutes}</Markdown>
             </article>
+          ) : summaryError ? (
+            <div className="flex flex-col items-center justify-center gap-4 py-16">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-50">
+                <AlertTriangle className="h-5 w-5 text-red-500" />
+              </div>
+              <div className="text-center">
+                <p className="text-sm font-medium text-dark">
+                  회의록 생성에 실패했습니다
+                </p>
+                <p className="mt-1 text-xs text-notion-text-muted">
+                  네트워크 상태를 확인하고 다시 시도해 주세요.
+                </p>
+              </div>
+              <div className="flex items-center gap-2 mt-2">
+                {onRetrySummary && (
+                  <button
+                    onClick={onRetrySummary}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-dark rounded-lg hover:bg-dark/90 transition-colors"
+                  >
+                    <RefreshCw className="h-3.5 w-3.5" />
+                    재시도
+                  </button>
+                )}
+                <Link
+                  href="/dashboard"
+                  className="px-4 py-2 text-sm font-medium text-notion-text-secondary rounded-lg hover:bg-notion-bg-hover transition-colors"
+                >
+                  대시보드로 이동
+                </Link>
+              </div>
+            </div>
           ) : (
             <div className="flex flex-col items-center justify-center gap-4 py-16">
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-notion-surface">

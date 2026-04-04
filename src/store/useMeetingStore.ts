@@ -27,6 +27,13 @@ interface GlossaryEntry {
   definition: string;
 }
 
+export interface AppError {
+  type: "stt" | "hint" | "summary" | "network" | "db";
+  message: string;
+  timestamp: number;
+  retryable?: boolean;
+}
+
 export type MeetingTab = "summary" | "script" | "minutes";
 
 interface MeetingState {
@@ -52,6 +59,11 @@ interface MeetingState {
   isDemoMode: boolean;
   glossaryTerms: GlossaryEntry[];
   note: string;
+  // Error handling
+  sttErrorCount: number;
+  sttPaused: boolean;
+  lastError: AppError | null;
+  summaryError: boolean;
 }
 
 interface MeetingActions {
@@ -77,6 +89,12 @@ interface MeetingActions {
   setSelectedProjectId: (value: string | null) => void;
   setNote: (value: string) => void;
   loadDemoData: (demoId: string) => void;
+  // Error handling
+  setSttErrorCount: (value: number) => void;
+  setSttPaused: (value: boolean) => void;
+  setLastError: (error: AppError | null) => void;
+  clearLastError: () => void;
+  setSummaryError: (value: boolean) => void;
 }
 
 const INITIAL_STATE: MeetingState = {
@@ -102,6 +120,10 @@ const INITIAL_STATE: MeetingState = {
   isDemoMode: false,
   glossaryTerms: [],
   note: "",
+  sttErrorCount: 0,
+  sttPaused: false,
+  lastError: null,
+  summaryError: false,
 };
 
 export const useMeetingStore = create<MeetingState & MeetingActions>(
@@ -148,6 +170,11 @@ export const useMeetingStore = create<MeetingState & MeetingActions>(
     setMeetingTitle: (value) => set({ meetingTitle: value }),
     setSelectedProjectId: (value) => set({ selectedProjectId: value }),
     setNote: (value) => set({ note: value }),
+    setSttErrorCount: (value) => set({ sttErrorCount: value }),
+    setSttPaused: (value) => set({ sttPaused: value }),
+    setLastError: (error) => set({ lastError: error }),
+    clearLastError: () => set({ lastError: null }),
+    setSummaryError: (value) => set({ summaryError: value }),
     loadDemoData: (demoId) => {
       const demo = DEMO_MEETINGS.find((d) => d.id === demoId);
       if (!demo) return;

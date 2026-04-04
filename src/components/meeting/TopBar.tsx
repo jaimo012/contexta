@@ -73,34 +73,72 @@ export default function TopBar() {
   const setFinalMinutes = useMeetingStore((s) => s.setFinalMinutes);
   const setIsSavedToDb = useMeetingStore((s) => s.setIsSavedToDb);
 
-  const handleStop = async () => {
-    stopRecording();
-    stopTimer();
-    setMeetingEnded(true);
+  const setLastError = useMeetingStore((s) => s.setLastError);
+  const setSummaryError = useMeetingStore((s) => s.setSummaryError);
 
+  const generateSummary = useCallback(async () => {
     const { transcripts } = useMeetingStore.getState();
     if (transcripts.length === 0) return;
 
     const fullTranscript = transcripts.map((t) => t.text).join("\n");
     setIsGeneratingMinutes(true);
+    setSummaryError(false);
 
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 60_000);
+
       const res = await fetch(apiUrl("/api/summary"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ fullTranscript }),
+        signal: controller.signal,
       });
+      clearTimeout(timeoutId);
+
       const data = await res.json();
 
-      if (!res.ok || !data.minutes) return;
+      if (!res.ok || !data.minutes) {
+        setSummaryError(true);
+        setLastError({
+          type: "summary",
+          message: "회의록 생성에 실패했습니다. 회의록 모달에서 재시도할 수 있습니다.",
+          timestamp: Date.now(),
+          retryable: true,
+        });
+        return;
+      }
 
       setFinalMinutes(data.minutes);
       await saveMeetingToDb(fullTranscript, data.minutes);
     } catch (err) {
+      setSummaryError(true);
+      if (err instanceof Error && err.name === "AbortError") {
+        setLastError({
+          type: "summary",
+          message: "회의록 생성 요청이 시간 초과되었습니다. 재시도해 주세요.",
+          timestamp: Date.now(),
+          retryable: true,
+        });
+      } else {
+        setLastError({
+          type: "summary",
+          message: "회의록 생성 중 오류가 발생했습니다. 재시도해 주세요.",
+          timestamp: Date.now(),
+          retryable: true,
+        });
+      }
       console.error("[SUMMARY] 회의록 생성 실패:", err);
     } finally {
       setIsGeneratingMinutes(false);
     }
+  }, [setIsGeneratingMinutes, setFinalMinutes, setSummaryError, setLastError]);
+
+  const handleStop = async () => {
+    stopRecording();
+    stopTimer();
+    setMeetingEnded(true);
+    await generateSummary();
   };
 
   const saveMeetingToDb = async (transcript: string, summary: string) => {

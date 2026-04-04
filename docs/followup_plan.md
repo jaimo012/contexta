@@ -80,4 +80,4 @@
 | **CLOVA Speech 사후 처리 파이프라인** | 미팅 종료 후 전체 녹음 파일을 CLOVA API로 돌려 고정밀 화자 분리 + IT 용어 인식 |
 | **웹소켓 실시간 동기화** | 현재 HTTP 기반 → WebSocket으로 전환하여 다중 디바이스/다중 탭 실시간 동기화 |
 | **보안 강화** | Row Level Security 전수 점검, Zero Data Retention API 설정, 데이터 격리 검증 |
-| **에러 핸들링 고도화** | 네트워크 단절/STT 타임아웃/API 장애 시 graceful fallback |
+| ~~**에러 핸들링 고도화**~~ | ✅ 완료 — Toast 알림, 네트워크 감지, STT 연속 실패 자동 일시정지, 회의록 생성 재시도, Auth 타임아웃 추가 |

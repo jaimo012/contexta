@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useRef } from "react";
+import { Suspense, useEffect, useRef, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import Markdown from "react-markdown";
 import TopBar from "@/components/meeting/TopBar";
@@ -9,7 +9,13 @@ import AiHint from "@/components/meeting/AiHint";
 import LiveNotepad from "@/components/meeting/LiveNotepad";
 import GlossaryCard from "@/components/meeting/GlossaryCard";
 import ClientModeOverlay from "@/components/meeting/ClientModeOverlay";
+import PostMeetingResult from "@/components/meeting/PostMeetingResult";
+import Toast from "@/components/ui/Toast";
 import { useMeetingStore, type MeetingTab, type AgendaItem } from "@/store/useMeetingStore";
+import { useNetworkStatus } from "@/hooks/useNetworkStatus";
+import { apiUrl } from "@/utils/apiUrl";
+import { useAuthStore } from "@/store/useAuthStore";
+import { supabase } from "@/utils/supabaseClient";
 import { FileText, LayoutList, BookOpen, Loader2, Download, ClipboardCopy, Clock, CheckCircle2, Circle, Sparkles } from "lucide-react";
 import { downloadAsTxt, copyToClipboard } from "@/utils/exportUtils";
 
@@ -40,8 +46,88 @@ function MeetingContent() {
   const meetingTitle = useMeetingStore((s) => s.meetingTitle);
   const loadDemoData = useMeetingStore((s) => s.loadDemoData);
   const resetMeeting = useMeetingStore((s) => s.resetMeeting);
+  const setIsGeneratingMinutes = useMeetingStore((s) => s.setIsGeneratingMinutes);
+  const setFinalMinutes = useMeetingStore((s) => s.setFinalMinutes);
+  const setSummaryError = useMeetingStore((s) => s.setSummaryError);
+  const setLastError = useMeetingStore((s) => s.setLastError);
+  const setIsSavedToDb = useMeetingStore((s) => s.setIsSavedToDb);
+  const setSttPaused = useMeetingStore((s) => s.setSttPaused);
+  const setSttErrorCount = useMeetingStore((s) => s.setSttErrorCount);
+
+  // Network status monitoring
+  useNetworkStatus();
 
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  // Retry summary generation
+  const retrySummary = useCallback(async () => {
+    const { transcripts: t } = useMeetingStore.getState();
+    if (t.length === 0) return;
+
+    const fullTranscript = t.map((entry) => entry.text).join("\n");
+    setIsGeneratingMinutes(true);
+    setSummaryError(false);
+
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 60_000);
+
+      const res = await fetch(apiUrl("/api/summary"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fullTranscript }),
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+      const data = await res.json();
+
+      if (!res.ok || !data.minutes) {
+        setSummaryError(true);
+        setLastError({
+          type: "summary",
+          message: "회의록 재생성에 실패했습니다.",
+          timestamp: Date.now(),
+          retryable: true,
+        });
+        return;
+      }
+
+      setFinalMinutes(data.minutes);
+
+      // Try to save to DB
+      const user = useAuthStore.getState().user;
+      if (user) {
+        const { meetingTitle: title, selectedProjectId: projectId } = useMeetingStore.getState();
+        const row: Record<string, unknown> = {
+          user_id: user.id,
+          title: title || "제목 없는 미팅",
+          transcript: fullTranscript,
+          summary: data.minutes,
+        };
+        if (projectId) row.project_id = projectId;
+
+        const { error } = await supabase.from("meetings").insert(row);
+        if (!error) setIsSavedToDb(true);
+      }
+    } catch (err) {
+      setSummaryError(true);
+      setLastError({
+        type: "summary",
+        message: "회의록 재생성 중 오류가 발생했습니다.",
+        timestamp: Date.now(),
+        retryable: true,
+      });
+      console.error("[SUMMARY] 재시도 실패:", err);
+    } finally {
+      setIsGeneratingMinutes(false);
+    }
+  }, [setIsGeneratingMinutes, setFinalMinutes, setSummaryError, setLastError, setIsSavedToDb]);
+
+  // Retry STT (resume after pause)
+  const retryStt = useCallback(() => {
+    setSttPaused(false);
+    setSttErrorCount(0);
+  }, [setSttPaused, setSttErrorCount]);
 
   // Load demo data if ?demo= param is present
   useEffect(() => {
@@ -93,6 +179,8 @@ function MeetingContent() {
     <div className="h-screen w-screen overflow-hidden bg-notion-bg flex flex-col">
       <ClientModeOverlay />
       <TopBar />
+      <PostMeetingResult onRetrySummary={retrySummary} />
+      <Toast onRetry={retryStt} />
 
       <div className="flex-1 flex flex-col md:flex-row w-full overflow-hidden">
         {/* Left: Main content area with tabs (70%) */}
