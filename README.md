@@ -771,6 +771,38 @@ retrySummary() → /api/summary 재호출
 | `src/app/dashboard/page.tsx` | 수정 — 검색 input, 프로젝트 필터, filteredMeetings, MiniCalendar 실데이터 |
 | `docs/followup_plan.md` | 수정 — 미팅 검색, 미니 캘린더 완료 처리 |
 
+### 2026-04-04: 설정 페이지 구현
+
+#### 완료한 작업
+
+**1. 설정 페이지 전면 구현 (`/settings`)**
+- 기존 "Phase 2에서 구현" 플레이스홀더를 완전한 설정 페이지로 교체
+- Notion 스타일 디자인 일관성 유지
+- 설정값 localStorage 저장 (향후 DB 마이그레이션 대비)
+
+**2. 구현된 설정 항목**
+- **AI 힌트**: 자동 힌트 ON/OFF 토글 + 힌트 생성 주기 (3/5/10/15분)
+- **녹음**: STT 기본 언어 (한국어/영어/일본어/중국어)
+- **단축키**: 클라이언트 모드 전환 키 표시 (Ctrl+Space)
+- **데이터 관리**: 나만의 용어 사전, 프로필 수정 바로가기
+- **계정**: 계정 삭제 (2단계 확인 + 전체 데이터 삭제)
+
+**3. 재사용 컴포넌트**
+- `SettingsSection`: 아이콘 + 제목 + 설명 + 구분선 카드
+- `SettingsRow`: 라벨 + 설명 + 컨트롤 레이아웃
+- `ToggleSwitch`: mint 색상 토글 스위치
+
+**4. 대시보드 설정 버튼 연결**
+- 사이드바 "설정" 버튼을 `<button>` → `<Link href="/settings">`로 변경
+
+#### 변경된 파일 목록
+
+| 파일 | 변경 유형 |
+|------|-----------|
+| `src/app/settings/page.tsx` | **대폭 수정** — 전체 설정 페이지 구현 |
+| `src/app/dashboard/page.tsx` | 수정 — 설정 버튼 Link 연결 |
+| `docs/followup_plan.md` | 수정 — 설정 페이지 완료 처리 |
+
 ---
 
 ## 라이선스

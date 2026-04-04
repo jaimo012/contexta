@@ -481,12 +481,13 @@ export default function DashboardPage() {
             <User className="h-3.5 w-3.5" />
             내 정보
           </button>
-          <button
+          <Link
+            href="/settings"
             className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-notion-text-secondary hover:bg-notion-bg-hover transition-colors w-full text-left"
           >
             <Settings className="h-3.5 w-3.5" />
             설정
-          </button>
+          </Link>
           <button
             onClick={handleLogout}
             className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-notion-text-secondary hover:bg-notion-bg-hover transition-colors w-full text-left"
