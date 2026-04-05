@@ -19,12 +19,10 @@ export default function DictionaryPage() {
 
   const [words, setWords] = useState<CustomWord[]>([]);
   const [newWord, setNewWord] = useState("");
-  const [newDescription, setNewDescription] = useState("");
   const [isAdding, setIsAdding] = useState(false);
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editWord, setEditWord] = useState("");
-  const [editDescription, setEditDescription] = useState("");
   const [dbReady, setDbReady] = useState(true);
 
   const fetchWords = useCallback(async () => {
@@ -48,7 +46,7 @@ export default function DictionaryPage() {
     const { error } = await supabase.from("custom_words").insert({
       user_id: user.id,
       word: newWord.trim(),
-      description: newDescription.trim(),
+      description: "",
     });
 
     if (error) {
@@ -57,7 +55,6 @@ export default function DictionaryPage() {
       console.warn("[DICT] 추가 실패:", error.message);
     } else {
       setNewWord("");
-      setNewDescription("");
       await fetchWords();
     }
     setIsAdding(false);
@@ -82,13 +79,11 @@ export default function DictionaryPage() {
   const startEdit = (item: CustomWord) => {
     setEditingId(item.id);
     setEditWord(item.word);
-    setEditDescription(item.description);
   };
 
   const cancelEdit = () => {
     setEditingId(null);
     setEditWord("");
-    setEditDescription("");
   };
 
   const handleUpdate = async () => {
@@ -98,7 +93,6 @@ export default function DictionaryPage() {
       .from("custom_words")
       .update({
         word: editWord.trim(),
-        description: editDescription.trim(),
       })
       .eq("id", editingId);
 
@@ -154,15 +148,8 @@ export default function DictionaryPage() {
               type="text"
               value={newWord}
               onChange={(e) => setNewWord(e.target.value)}
-              placeholder="단어 (예: Kubernetes, SLA)"
-              className="w-full rounded-md border border-notion-border px-3 py-2 text-sm text-dark placeholder-notion-text-muted outline-none focus:border-mint focus:ring-1 focus:ring-mint transition-colors"
-            />
-            <input
-              type="text"
-              value={newDescription}
-              onChange={(e) => setNewDescription(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleAdd()}
-              placeholder="설명 (예: 컨테이너 오케스트레이션 시스템)"
+              placeholder="단어 (예: Kubernetes, SLA)"
               className="w-full rounded-md border border-notion-border px-3 py-2 text-sm text-dark placeholder-notion-text-muted outline-none focus:border-mint focus:ring-1 focus:ring-mint transition-colors"
             />
             <button
@@ -201,15 +188,9 @@ export default function DictionaryPage() {
                         type="text"
                         value={editWord}
                         onChange={(e) => setEditWord(e.target.value)}
-                        className="w-full rounded-md border border-mint px-3 py-2 text-sm text-dark outline-none focus:ring-1 focus:ring-mint"
-                        autoFocus
-                      />
-                      <input
-                        type="text"
-                        value={editDescription}
-                        onChange={(e) => setEditDescription(e.target.value)}
                         onKeyDown={(e) => e.key === "Enter" && handleUpdate()}
                         className="w-full rounded-md border border-mint px-3 py-2 text-sm text-dark outline-none focus:ring-1 focus:ring-mint"
+                        autoFocus
                       />
                       <div className="flex justify-end gap-2 mt-1">
                         <button
@@ -233,11 +214,6 @@ export default function DictionaryPage() {
                         <h3 className="text-sm font-medium text-dark truncate" title={item.word}>
                           {item.word}
                         </h3>
-                        {item.description && (
-                          <p className="text-xs text-notion-text-secondary mt-0.5 line-clamp-2 break-words" title={item.description}>
-                            {item.description}
-                          </p>
-                        )}
                       </div>
                       <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button

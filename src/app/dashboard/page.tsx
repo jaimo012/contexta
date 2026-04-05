@@ -1,8 +1,7 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 import Markdown from "react-markdown";
 import { useAuthStore } from "@/store/useAuthStore";
 import {
@@ -18,9 +17,7 @@ import AppShell, { useAppShell, type Meeting } from "@/components/layout/AppShel
 export default function DashboardPage() {
   return (
     <AppShell title="대시보드">
-      <Suspense fallback={null}>
-        <DashboardContent />
-      </Suspense>
+      <DashboardContent />
     </AppShell>
   );
 }
@@ -36,9 +33,6 @@ function DashboardContent() {
     getProjectName,
   } = useAppShell();
 
-  const searchParams = useSearchParams();
-  const meetingIdParam = searchParams?.get("meeting") ?? null;
-
   const [selectedMeeting, setSelectedMeeting] = useState<{
     title: string;
     summary: string;
@@ -48,20 +42,6 @@ function DashboardContent() {
 
   const displayName =
     user?.user_metadata?.full_name || user?.email?.split("@")[0] || "사용자";
-
-  // Open meeting detail from ?meeting=<id>
-  useEffect(() => {
-    if (!meetingIdParam) return;
-    const m = meetings.find((x) => x.id === meetingIdParam);
-    if (m) {
-      setSelectedMeeting({
-        title: m.title || "제목 없는 미팅",
-        summary: m.summary,
-        date: new Date(m.created_at).toLocaleDateString("ko-KR"),
-        project: getProjectName(m.project_id) || undefined,
-      });
-    }
-  }, [meetingIdParam, meetings, getProjectName]);
 
   // Filter meetings based on sidebar filters
   const filteredMeetings = meetings.filter((meeting: Meeting) => {
