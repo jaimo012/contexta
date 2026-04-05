@@ -5,8 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/utils/supabaseClient";
 import { useAuthStore } from "@/store/useAuthStore";
+import AppShell from "@/components/layout/AppShell";
 import {
-  ArrowLeft,
   Sparkles,
   Keyboard,
   Clock,
@@ -92,23 +92,8 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="h-screen w-screen overflow-hidden bg-notion-bg flex flex-col">
-      {/* Header */}
-      <header className="flex items-center h-11 px-4 border-b border-notion-border shrink-0">
-        <Link
-          href="/dashboard"
-          className="flex items-center gap-1.5 text-sm text-notion-text-secondary hover:text-dark transition-colors"
-        >
-          <ArrowLeft className="h-3.5 w-3.5" />
-          대시보드
-        </Link>
-        <span className="mx-3 text-notion-border">|</span>
-        <span className="text-sm font-medium text-dark">설정</span>
-      </header>
-
-      {/* Content */}
-      <main className="flex-1 overflow-y-auto">
-        <div className="max-w-[640px] mx-auto px-6 md:px-12 py-8">
+    <AppShell title="설정" showBackButton backHref="/dashboard">
+      <div className="max-w-[640px] mx-auto px-6 md:px-12 py-8">
           {/* AI Hint Settings */}
           <SettingsSection
             icon={Sparkles}
@@ -242,8 +227,7 @@ export default function SettingsPage() {
             </button>
           </div>
         </div>
-      </main>
-    </div>
+    </AppShell>
   );
 }
 

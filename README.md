@@ -63,16 +63,23 @@ contexta/
 ├── src/
 │   ├── app/                      # Next.js App Router (정적 페이지)
 │   │   ├── (auth)/login/         # 구글 소셜 로그인 페이지
-│   │   ├── dashboard/            # 대시보드 (로그인 후 메인)
-│   │   ├── meeting/              # 미팅 진행 페이지
-│   │   ├── settings/             # 설정 페이지
-│   │   │   └── dictionary/       # 나만의 용어 사전 CRUD
+│   │   ├── dashboard/            # 대시보드 (AppShell + 최근 미팅)
+│   │   ├── profile/              # 내 정보 페이지 (AppShell)
+│   │   ├── settings/             # 설정 페이지 (AppShell)
+│   │   │   └── dictionary/       # 나만의 용어 사전 CRUD (AppShell)
+│   │   ├── meeting/              # 미팅 진행 페이지 (풀스크린, Shell 없음)
+│   │   ├── onboarding/           # 온보딩 플로우 (풀스크린, Shell 없음)
 │   │   ├── layout.tsx            # 루트 레이아웃 (Viewport + AuthProvider)
 │   │   ├── page.tsx              # 랜딩 페이지
 │   │   └── globals.css           # 전역 스타일 + Safe Area
 │   ├── components/               # 재사용 컴포넌트
 │   │   ├── providers/
-│   │   │   └── AuthProvider.tsx  # Supabase 인증 상태 리스너
+│   │   │   ├── AuthProvider.tsx  # Supabase 인증 상태 리스너
+│   │   │   └── AuthGuard.tsx     # 라우트 보호 (비로그인 시 /login 리다이렉트)
+│   │   ├── layout/               # 공통 레이아웃 (UI 일관성)
+│   │   │   ├── AppShell.tsx      # 좌측 사이드바 + 상단바 + 우측 캘린더 레이아웃
+│   │   │   ├── MiniCalendar.tsx  # 미니 캘린더 (실데이터 + 예정 일정 표시)
+│   │   │   └── UpcomingMeetingCard.tsx  # 다가오는 미팅 카드
 │   │   └── meeting/
 │   │       ├── TopBar.tsx        # 상단 바 (제목, 타이머, 버튼, DB 저장)
 │   │       ├── SummaryBlock.tsx  # 5분 단위 요약 블록
@@ -102,6 +109,61 @@ contexta/
 ├── package.json
 ├── tsconfig.json
 └── next.config.ts                # Static Export + unoptimized images
+```
+
+---
+
+## 공통 레이아웃 (AppShell)
+
+Contexta의 모든 주요 페이지(대시보드, 내 정보, 설정, 내 사전)는 **AppShell** 공통 레이아웃으로 감싸져 있어 일관된 UX를 제공합니다.
+
+### AppShell 구조
+
+```
+┌──────────┬───────────────────────────────┬──────────────┐
+│  Left    │    Top Bar (제목 + 뒤로가기)   │  Right       │
+│  Sidebar ├───────────────────────────────┤  Calendar    │
+│  (240px) │                               │  Panel       │
+│          │                               │  (288px)     │
+│  - 로고   │      Main Content             │              │
+│  - 검색   │      (페이지별 children)        │  - 미니      │
+│  - 프로젝트│                               │   캘린더      │
+│  - 미팅   │                               │  - 다가오는   │
+│  - 내사전│                                 │   미팅       │
+│  - 내정보│                                 │              │
+│  - 설정  │                                 │              │
+│  - 로그아웃│                               │              │
+└──────────┴───────────────────────────────┴──────────────┘
+```
+
+### 핵심 특징
+
+- **좌측 사이드바 상시 고정**: 대시보드/설정/사전/프로필 페이지 어디서든 동일한 네비게이션 — 현재 페이지에 해당하는 메뉴가 하이라이트됨
+- **우측 캘린더 패널 상시 고정**: 모든 페이지에서 미니 캘린더 + 다가오는 미팅이 항상 보임 (lg 이상)
+- **일관된 상단 바**: 페이지 제목은 좌측, 뒤로가기 버튼은 필요한 페이지에서 항상 같은 위치(제목 앞)에 노출
+- **사이드바 접기 상태 유지**: localStorage에 저장되어 페이지 이동 후에도 유지
+- **검색/필터 크로스-페이지**: 설정·사전·프로필 페이지에서 사이드바 검색 입력 시 자동으로 대시보드로 이동하며 필터가 적용됨
+- **공유 데이터 소스**: 프로젝트/미팅/쿼터/예정된 미팅 등은 AppShell이 중앙에서 Supabase 조회 후 `useAppShell()` 훅을 통해 자식 페이지에 제공
+- **풀스크린 예외**: `/meeting`(녹음 화면)과 `/onboarding`(최초 설정 플로우)은 AppShell을 사용하지 않음 — 몰입감 / 방해 최소화
+
+### 사용 방법
+
+```tsx
+import AppShell, { useAppShell } from "@/components/layout/AppShell";
+
+export default function MyPage() {
+  return (
+    <AppShell title="페이지 제목" showBackButton backHref="/dashboard">
+      <MyContent />
+    </AppShell>
+  );
+}
+
+function MyContent() {
+  // AppShell 자식은 useAppShell()로 공유 데이터 접근 가능
+  const { meetings, projects, quota, searchQuery } = useAppShell();
+  return <div>...</div>;
+}
 ```
 
 ---
@@ -525,6 +587,48 @@ Phase 7 이후 로컬 테스트 중 발견된 버그들을 수정했습니다.
 | **Phase 5** | Supabase 인증 + 구글 OAuth + DB 영구 저장 | ✅ |
 | **Phase 6** | 프로젝트 폴더 + 나만의 사전 + 사용 시간 제한 + 게이미피케이션 | ✅ |
 | **Phase 7** | Capacitor 하이브리드 앱 + 모바일 권한 + Safe Area | ✅ |
+| **Phase 8** | AppShell 공통 레이아웃 도입 — 좌측 사이드바 + 우측 캘린더 패널 + 일관된 상단바/뒤로가기 | ✅ |
+
+---
+
+## 작업 로그
+
+### 2026-04-05: AppShell 공통 레이아웃 도입으로 UI 일관성 확보
+
+#### 완료한 작업
+
+**1. `AppShell` 공통 레이아웃 컴포넌트 신설** (`src/components/layout/AppShell.tsx`)
+- 좌측 사이드바(로고 + 새 미팅 + 검색 + 프로젝트 + 미팅 기록 + 플랜/쿼터 + 내 사전/내 정보/설정/로그아웃) 전 페이지 공통 렌더링
+- 우측 캘린더 패널(미니 캘린더 + 다가오는 미팅) 전 페이지 공통 렌더링 (lg 이상)
+- 상단 바 일관화: 페이지 제목 + 선택적 뒤로가기 버튼(항상 좌측, 동일한 스타일)
+- `useAppShell()` 커스텀 훅으로 자식 페이지에 프로젝트/미팅/쿼터 등 공유 데이터 제공
+- 사이드바 접기 상태를 `localStorage`에 저장해 페이지 이동 후에도 유지
+- 프로젝트 생성 / 미팅 일정 추가 / 시간 늘리기 미션 모달을 AppShell 내부로 통합
+- 사이드바 검색 입력 시 비-대시보드 페이지에서 자동으로 `/dashboard`로 이동
+
+**2. `MiniCalendar` / `UpcomingMeetingCard` 컴포넌트 분리** (`src/components/layout/`)
+- 기존 `dashboard/page.tsx` 내부 함수형 컴포넌트를 독립 파일로 추출
+- MiniCalendar는 과거 미팅(`meetings`) + 예정 미팅(`scheduled`) 두 가지 점 표시 지원
+
+**3. 각 페이지 AppShell 적용 리팩토링**
+- `app/dashboard/page.tsx`: 1,339줄 → 약 280줄로 축소. 사이드바/캘린더/모달 로직을 AppShell에 위임, 페이지는 welcome + 최근 미팅 목록 + 미팅 상세 모달만 담당
+- `app/settings/page.tsx`: 자체 Header 제거, AppShell로 감싸고 `showBackButton backHref="/dashboard"` 사용
+- `app/settings/dictionary/page.tsx`: 동일하게 AppShell 적용 (`backHref="/settings"`)
+- `app/profile/page.tsx`: **신규 페이지** — 기존 dashboard 내부의 `ProfileView` 상태 토글을 독립 라우트로 분리, AppShell 적용
+
+**4. 뒤로가기 버튼 UX 일관성**
+- 모든 보조 페이지(설정, 내 사전, 내 정보)에서 상단 바의 동일한 위치(제목 왼쪽)에 `ArrowLeft` 아이콘 + "뒤로" 텍스트 표시
+- `backHref` prop으로 명시적 경로 지정, 없으면 `router.back()` fallback
+
+**5. 예외 페이지**
+- `/meeting` (녹음 진행): 풀스크린 유지 — 몰입 방해 최소화
+- `/onboarding` (최초 프로필 설정): 풀스크린 유지 — 단계별 플로우 방해 방지
+- `/login`, `/` (랜딩): 기존 그대로
+
+#### 변경 효과
+- **코드 중복 제거**: 사이드바 + 캘린더 + 모달 코드가 3개 페이지에 중복되어 있던 것을 단일 소스로 통합
+- **일관된 네비게이션**: 어떤 페이지에서도 동일한 사이드바/캘린더 위치 → 사용자 멘탈 모델 단순화
+- **유지보수성**: 사이드바/캘린더 UI 변경 시 한 곳만 수정
 
 ---
 

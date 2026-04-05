@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import Link from "next/link";
 import { supabase } from "@/utils/supabaseClient";
 import { useAuthStore } from "@/store/useAuthStore";
-import { ArrowLeft, Plus, Pencil, Trash2, AlertTriangle, Mic } from "lucide-react";
+import AppShell from "@/components/layout/AppShell";
+import { Plus, Pencil, Trash2, AlertTriangle } from "lucide-react";
 
 interface CustomWord {
   id: string;
@@ -113,33 +113,17 @@ export default function DictionaryPage() {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-notion-bg">
-        <div className="h-6 w-6 rounded-full border-2 border-notion-border border-t-dark animate-spin" />
-      </div>
+      <AppShell title="내 사전" showBackButton backHref="/settings">
+        <div className="flex min-h-full items-center justify-center">
+          <div className="h-6 w-6 rounded-full border-2 border-notion-border border-t-dark animate-spin" />
+        </div>
+      </AppShell>
     );
   }
 
   return (
-    <div className="min-h-screen bg-notion-bg">
-      {/* Header - Notion style */}
-      <header className="flex h-11 items-center gap-3 border-b border-notion-border px-4 md:px-6">
-        <Link
-          href="/dashboard"
-          className="inline-flex items-center gap-1 text-xs text-notion-text-secondary hover:text-dark transition-colors"
-        >
-          <ArrowLeft className="h-3.5 w-3.5" />
-          대시보드
-        </Link>
-        <div className="h-4 w-px bg-notion-border" />
-        <div className="flex items-center gap-2">
-          <div className="flex h-6 w-6 items-center justify-center rounded bg-mint">
-            <Mic className="h-3.5 w-3.5 text-white" />
-          </div>
-          <span className="text-sm font-semibold text-dark">내 영업 사전</span>
-        </div>
-      </header>
-
-      <main className="mx-auto max-w-[720px] px-6 md:px-12 py-10">
+    <AppShell title="내 사전" showBackButton backHref="/settings">
+      <div className="mx-auto max-w-[720px] px-6 md:px-12 py-10">
         {!dbReady && (
           <section className="mb-6 animate-fade-in">
             <div className="flex items-start gap-3 rounded-lg border border-[#FFAA00]/30 bg-[#FFAA00]/5 p-4">
@@ -278,7 +262,7 @@ export default function DictionaryPage() {
             </div>
           )}
         </section>
-      </main>
-    </div>
+      </div>
+    </AppShell>
   );
 }
