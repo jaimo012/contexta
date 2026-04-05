@@ -1,13 +1,14 @@
 "use client";
 
-import { useRef, useCallback } from "react";
+import { useRef, useCallback, useEffect } from "react";
 import { useMeetingStore } from "@/store/useMeetingStore";
 import { apiUrl } from "@/utils/apiUrl";
 
 const VOLUME_THRESHOLD = 18;
 const SILENCE_DEBOUNCE_MS = 1500;
-const STT_TIMEOUT_MS = 10_000;
+const STT_TIMEOUT_MS = 15_000;
 const MAX_STT_FAILURES = 5;
+const CHUNK_DURATION_MS = 5000;
 
 const AudioContextCompat =
   typeof window !== "undefined"
@@ -50,10 +51,12 @@ export function useAudioRecorder() {
   const analyserRef = useRef<AnalyserNode | null>(null);
   const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const rafIdRef = useRef<number | null>(null);
+  const chunkTimerRef = useRef<number | null>(null);
   const lastSpeakTimeRef = useRef<number>(0);
   const mimeTypeRef = useRef<string>("");
-
-  const isSendingRef = useRef(false);
+  const hadSpeechInChunkRef = useRef<boolean>(false);
+  const isStoppingRef = useRef<boolean>(false);
+  const startChunkRecorderRef = useRef<(() => void) | null>(null);
 
   const setMicGranted = useMeetingStore((s) => s.setMicGranted);
   const setIsRecording = useMeetingStore((s) => s.setIsRecording);
@@ -83,6 +86,7 @@ export function useAudioRecorder() {
 
       if (average >= VOLUME_THRESHOLD) {
         lastSpeakTimeRef.current = now;
+        hadSpeechInChunkRef.current = true;
         setIsSpeaking(true);
       } else if (now - lastSpeakTimeRef.current > SILENCE_DEBOUNCE_MS) {
         setIsSpeaking(false);
@@ -95,13 +99,9 @@ export function useAudioRecorder() {
   }, [setIsSpeaking]);
 
   const sendChunkToSTT = useCallback(async (chunk: Blob) => {
-    if (isSendingRef.current) return;
-
     // Check if STT is paused due to consecutive failures or network issues
     const { sttPaused } = useMeetingStore.getState();
     if (sttPaused) return;
-
-    isSendingRef.current = true;
 
     try {
       const ext = getChunkExtension(mimeTypeRef.current);
@@ -140,7 +140,7 @@ export function useAudioRecorder() {
       store.setSttErrorCount(newCount);
 
       if (err instanceof Error && err.name === "AbortError") {
-        console.warn("[STT] 요청 타임아웃 (10초 초과)");
+        console.warn("[STT] 요청 타임아웃 (15초 초과)");
       } else {
         console.error("[STT] 전송 실패:", err);
       }
@@ -155,10 +155,67 @@ export function useAudioRecorder() {
         });
         console.warn(`[STT] ${MAX_STT_FAILURES}회 연속 실패 — STT 일시 중지`);
       }
-    } finally {
-      isSendingRef.current = false;
     }
   }, [addTranscript]);
+
+  const startChunkRecorder = useCallback(() => {
+    const stream = streamRef.current;
+    if (!stream) return;
+
+    const mimeType = mimeTypeRef.current;
+    const recorderOptions: MediaRecorderOptions = {};
+    if (mimeType) {
+      recorderOptions.mimeType = mimeType;
+    }
+
+    let recorder: MediaRecorder;
+    try {
+      recorder = new MediaRecorder(stream, recorderOptions);
+    } catch (err) {
+      console.error("[STT] MediaRecorder 생성 실패:", err);
+      return;
+    }
+
+    recorderRef.current = recorder;
+    hadSpeechInChunkRef.current = false;
+
+    recorder.ondataavailable = (e) => {
+      // MediaRecorder stopped → this Blob is a complete, self-contained file
+      // (contains container header + codec init data), so it can be decoded
+      // independently by Deepgram.
+      if (e.data.size > 0 && hadSpeechInChunkRef.current) {
+        addAudioChunk(e.data);
+        sendChunkToSTT(e.data);
+      }
+    };
+
+    recorder.onstop = () => {
+      // Keep the loop going as long as we're still recording (i.e. user
+      // hasn't called stopRecording). Each new MediaRecorder produces a
+      // fresh, independently decodable file.
+      if (!isStoppingRef.current && streamRef.current) {
+        startChunkRecorderRef.current?.();
+      }
+    };
+
+    try {
+      recorder.start(); // no timeslice → single complete blob on stop()
+    } catch (err) {
+      console.error("[STT] MediaRecorder 시작 실패:", err);
+      return;
+    }
+
+    // Schedule stop to finalize this chunk after CHUNK_DURATION_MS
+    chunkTimerRef.current = window.setTimeout(() => {
+      if (recorderRef.current && recorderRef.current.state === "recording") {
+        recorderRef.current.stop();
+      }
+    }, CHUNK_DURATION_MS);
+  }, [addAudioChunk, sendChunkToSTT]);
+
+  useEffect(() => {
+    startChunkRecorderRef.current = startChunkRecorder;
+  }, [startChunkRecorder]);
 
   const startRecording = useCallback(async () => {
     if (!AudioContextCompat) {
@@ -189,42 +246,37 @@ export function useAudioRecorder() {
 
       detectSound();
 
-      const mimeType = getSupportedMimeType();
-      mimeTypeRef.current = mimeType;
-
-      const recorderOptions: MediaRecorderOptions = {};
-      if (mimeType) {
-        recorderOptions.mimeType = mimeType;
-      }
-
-      const recorder = new MediaRecorder(stream, recorderOptions);
-      recorderRef.current = recorder;
-
-      recorder.ondataavailable = (e) => {
-        const speaking = useMeetingStore.getState().isSpeaking;
-        if (e.data.size > 0 && speaking) {
-          addAudioChunk(e.data);
-          sendChunkToSTT(e.data);
-        }
-      };
+      mimeTypeRef.current = getSupportedMimeType();
 
       clearAudioChunks();
-      recorder.start(1000);
+      isStoppingRef.current = false;
       setIsRecording(true);
+
+      startChunkRecorder();
     } catch (err) {
       console.error("마이크 권한 요청 실패:", err);
       setMicGranted(false);
       alert("마이크 권한이 필요합니다. 설정에서 마이크 접근을 허용해 주세요.");
     }
-  }, [setMicGranted, setIsRecording, addAudioChunk, clearAudioChunks, detectSound, sendChunkToSTT]);
+  }, [setMicGranted, setIsRecording, clearAudioChunks, detectSound, startChunkRecorder]);
 
   const stopRecording = useCallback(() => {
+    isStoppingRef.current = true;
+
+    if (chunkTimerRef.current !== null) {
+      clearTimeout(chunkTimerRef.current);
+      chunkTimerRef.current = null;
+    }
+
     if (rafIdRef.current !== null) {
       cancelAnimationFrame(rafIdRef.current);
       rafIdRef.current = null;
     }
 
     if (recorderRef.current && recorderRef.current.state !== "inactive") {
+      // Fire one last ondataavailable for any speech captured since the
+      // last chunk boundary, then onstop will NOT restart because
+      // isStoppingRef is true.
       recorderRef.current.stop();
     }
 
@@ -242,6 +294,7 @@ export function useAudioRecorder() {
     analyserRef.current = null;
     recorderRef.current = null;
     mimeTypeRef.current = "";
+    hadSpeechInChunkRef.current = false;
     setIsRecording(false);
     setIsSpeaking(false);
   }, [setIsRecording, setIsSpeaking]);

@@ -593,6 +593,78 @@ Phase 7 이후 로컬 테스트 중 발견된 버그들을 수정했습니다.
 
 ## 작업 로그
 
+### 2026-04-05 (추가 3): Vercel 배포 + Deepgram STT 청크 파이프라인 버그 수정
+
+#### 배경
+- Vercel(`contexta-neon.vercel.app`)로 첫 프로덕션 배포 진행. Supabase Auth URL Configuration, Google OAuth(Cloud Console) 리디렉션 URI 연결, Vercel 환경변수 세팅 완료.
+- 로그인 / 대시보드 / 구글 캘린더 연동까지는 정상 동작 확인.
+- **그러나 실제 녹음 테스트 시 STT가 동작하지 않음** — 브라우저 콘솔에 `/api/stt` 500 에러가 수십 건 연속 발생, 요약/힌트 아무것도 뜨지 않는 상태.
+
+#### 원인 분석 (Vercel Runtime Logs)
+Deepgram이 반환한 에러 메시지:
+```
+Bad Request: failed to process audio: corrupt or unsupported data
+```
+
+기존 `useAudioRecorder.ts`는 `MediaRecorder.start(1000)` 로 1초 단위 timeslice 청크를 만들어 매 청크를 그대로 `/api/stt` → Deepgram `transcribeFile`로 전송하는 구조였다. 문제는:
+
+- `MediaRecorder`가 timeslice 모드로 뱉는 청크 중 **오직 첫 번째 청크만** WebM 컨테이너 헤더(EBML 헤더 + 코덱 초기화 데이터)를 포함한다.
+- 두 번째 이후 청크들은 헤더 없는 raw cluster 조각이라 **단독 파일로 디코딩 불가능**.
+- Deepgram `transcribeFile` 엔드포인트는 "완결된 미디어 파일"을 요구하므로, 헤더 없는 조각을 받으면 400 (`corrupt or unsupported data`) 을 반환.
+- 실제 로그에서도 테스트 구간 중 **단 1건**만 200 OK(첫 번째 청크), 나머지는 전부 500으로 찍혔음.
+
+즉 로컬/이전 단계에서 한 번도 end-to-end로 STT가 동작한 적이 없었고, 배포 시점에야 드러난 구조적 버그.
+
+#### 수정한 작업 (`src/hooks/useAudioRecorder.ts` 재작성)
+
+**1. Chunk Loop 방식으로 전환**
+- `recorder.start(1000)` 방식 폐기.
+- 대신 `recorder.start()` (timeslice 없음) → 5초 타이머 → `recorder.stop()` → `ondataavailable`에서 **헤더를 포함한 완결된 WebM 파일** 수신 → `/api/stt` 전송 → `onstop` 핸들러에서 **새 `MediaRecorder` 인스턴스를 즉시 생성해서 루프 지속**.
+- 각 청크가 독립적으로 디코딩 가능한 완전한 파일이 되어 Deepgram이 정상 처리.
+
+**2. VAD 연동 유지**
+- `analyserNode` 기반 볼륨 감지는 그대로 유지. 5초 윈도우 내에 발화가 한 번이라도 있었는지를 `hadSpeechInChunkRef` 플래그로 기록.
+- 발화가 전혀 없던 청크는 Deepgram 호출 스킵 (비용/쿼터 절약).
+
+**3. 정지 처리**
+- `isStoppingRef` 플래그로 `onstop` 핸들러의 "자동 재시작" 로직과 사용자의 `stopRecording()` 호출을 구분.
+- 사용자가 정지하면: 타이머 clear → 진행 중인 recorder stop (마지막 청크 전송 기회 부여) → `onstop`에서 재시작 안 함 → MediaStream/AudioContext 정리.
+
+**4. 순환 참조 회피**
+- `onstop` 콜백이 자기 자신(`startChunkRecorder`)을 호출해야 하므로 React hook의 선언 순서 문제가 발생. `startChunkRecorderRef`를 두고 `useEffect`로 최신 콜백을 ref에 주입하는 패턴 사용 → ESLint `react-hooks/refs` / `react-hooks/immutability` 룰 통과.
+
+**5. 타임아웃 조정**
+- STT 요청 타임아웃 10s → 15s (5초 청크 + 네트워크/Deepgram 처리 시간 여유).
+
+#### 트레이드오프
+| 항목 | 변경 전 | 변경 후 |
+|------|---------|---------|
+| 자막 표시 주기 | 1초 (이론상) / 실제 **0건** | 약 5초 |
+| 각 청크 독립 디코딩 | ❌ (첫 청크만 가능) | ✅ 항상 가능 |
+| Deepgram 호출 성공률 | ~3% (1/30) | 정상 |
+| 구조 변경 범위 | — | 훅 1개 파일만 |
+
+실시간성을 5초 지연으로 양보하는 대신 구조 변경을 최소화하는 옵션 선택. 추후 더 낮은 지연이 필요하면 Deepgram Live(WebSocket) 스트리밍으로 업그레이드 가능.
+
+#### 검증
+- `npx eslint src/hooks/useAudioRecorder.ts` — 에러 0
+- `npm run build` — Compiled successfully, 18/18 static pages 생성, `/api/stt` 동적 라우트 정상 빌드
+
+#### 변경된 파일 목록
+
+| 파일 | 변경 유형 |
+|------|-----------|
+| `src/hooks/useAudioRecorder.ts` | **재작성** — timeslice 방식 → 5초 chunk loop 방식으로 전환, `onstop` 재시작 루프, `isStoppingRef` / `hadSpeechInChunkRef` / `startChunkRecorderRef` 도입 |
+| `README.md` | 수정 — 본 작업 로그 추가 |
+
+#### 배포 환경 세팅 (참고용 기록)
+- **Vercel**: `contexta-neon.vercel.app` (프로젝트 루트 자동 배포, main 브랜치)
+- **환경변수**: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `ANTHROPIC_API_KEY`, `DEEPGRAM_API_KEY`, `CLOVA_SPEECH_API_KEY`, `CLOVA_SPEECH_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`
+- **Supabase Auth**: Site URL = `https://contexta-neon.vercel.app`, Redirect URLs = `https://contexta-neon.vercel.app/**`
+- **Google Cloud OAuth**: Authorized redirect URI = `https://dfuiycwlbnmexnvyyfie.supabase.co/auth/v1/callback`
+
+---
+
 ### 2026-04-05: AppShell 공통 레이아웃 도입으로 UI 일관성 확보
 
 #### 완료한 작업
