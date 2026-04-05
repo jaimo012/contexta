@@ -31,12 +31,15 @@ import {
   Gift,
   ArrowRight,
   ArrowLeft,
+  Check,
 } from "lucide-react";
 import { supabase } from "@/utils/supabaseClient";
 import { useAuthStore } from "@/store/useAuthStore";
 import { DEMO_MEETINGS } from "@/constants/demoMeetings";
 import MiniCalendar from "./MiniCalendar";
 import UpcomingMeetingCard from "./UpcomingMeetingCard";
+import CalendarIntegrationModal from "./CalendarIntegrationModal";
+import { useCalendarConnection } from "@/hooks/useCalendarConnection";
 
 /* ===== Types ===== */
 export interface Project {
@@ -166,6 +169,24 @@ export default function AppShell({
     attendees: "",
   });
   const [isMissionOpen, setIsMissionOpen] = useState(false);
+  const [isCalendarModalOpen, setIsCalendarModalOpen] = useState(false);
+  const { isConnected: isCalendarConnected, connect: connectCalendar } =
+    useCalendarConnection();
+
+  // Handle OAuth return: ?calendar=connected in URL → mark connected
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("calendar") === "connected" && user) {
+      connectCalendar("google", user.email);
+      // Clean up URL without reloading
+      params.delete("calendar");
+      const newSearch = params.toString();
+      const newUrl =
+        window.location.pathname + (newSearch ? `?${newSearch}` : "") + window.location.hash;
+      window.history.replaceState({}, "", newUrl);
+    }
+  }, [user, connectCalendar]);
 
   const displayName =
     user?.user_metadata?.full_name || user?.email?.split("@")[0] || "사용자";
@@ -750,11 +771,34 @@ export default function AppShell({
                 <div className="p-5 flex flex-col gap-6">
                   {/* Mini Calendar */}
                   <section>
-                    <div className="flex items-center gap-2 mb-3">
-                      <Calendar className="h-4 w-4 text-notion-text-secondary" />
-                      <h3 className="text-xs font-semibold text-notion-text-secondary uppercase tracking-wider">
-                        캘린더
-                      </h3>
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4 text-notion-text-secondary" />
+                        <h3 className="text-xs font-semibold text-notion-text-secondary uppercase tracking-wider">
+                          캘린더
+                        </h3>
+                      </div>
+                      <button
+                        onClick={() => setIsCalendarModalOpen(true)}
+                        className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium transition-colors ${
+                          isCalendarConnected
+                            ? "text-mint-dark bg-mint-light/60 hover:bg-mint-light"
+                            : "text-notion-text-secondary hover:bg-notion-bg-hover hover:text-dark"
+                        }`}
+                        title={isCalendarConnected ? "캘린더 연동 관리" : "캘린더 연동하기"}
+                      >
+                        {isCalendarConnected ? (
+                          <>
+                            <Check className="h-3 w-3" />
+                            연동됨
+                          </>
+                        ) : (
+                          <>
+                            <Plus className="h-3 w-3" />
+                            연동하기
+                          </>
+                        )}
+                      </button>
                     </div>
                     <MiniCalendar meetings={meetings} scheduled={scheduledMeetings} />
                   </section>
@@ -1080,6 +1124,12 @@ export default function AppShell({
             </div>
           </div>
         )}
+
+        {/* ===== Calendar integration modal ===== */}
+        <CalendarIntegrationModal
+          open={isCalendarModalOpen}
+          onClose={() => setIsCalendarModalOpen(false)}
+        />
       </div>
     </AppShellContext.Provider>
   );

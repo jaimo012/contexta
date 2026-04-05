@@ -650,6 +650,39 @@ Phase 7 이후 로컬 테스트 중 발견된 버그들을 수정했습니다.
 
 ---
 
+### 2026-04-05 (추가 2): 외부 캘린더 연동 기능
+
+#### 완료한 작업
+
+**1. `useCalendarConnection` 훅** (`src/hooks/useCalendarConnection.ts`)
+- localStorage(`contexta_calendar_connection`)에 연동 상태(provider, email, connectedAt) 저장
+- `connect` / `disconnect` 함수, `isConnected` 플래그, 하이드레이션 완료 여부 노출
+- 커스텀 이벤트(`contexta-calendar-change`)로 같은 탭 내 다른 컴포넌트 즉시 동기화, `storage` 이벤트로 멀티탭 동기화
+
+**2. `CalendarIntegrationModal` 컴포넌트** (`src/components/layout/CalendarIntegrationModal.tsx`)
+- 비연동 상태: Google 로고 + "Google 캘린더 연동하기" 버튼, Outlook은 "준비 중" 뱃지로 비활성화
+- 연동 상태: 연동된 계정/날짜 표시 + "연동 해제" 버튼(확인 다이얼로그 포함)
+- Google OAuth 재인증 호출 — `supabase.auth.signInWithOAuth`에 `scopes: "https://www.googleapis.com/auth/calendar.readonly"` + `access_type: offline` + `prompt: consent` 전달, `redirectTo`에 `?calendar=connected` 쿼리 포함
+- OAuth 실패 시 로컬 연동(localStorage)으로 폴백해 UX 지속성 유지
+
+**3. AppShell 우측 캘린더 패널 — "연동하기" 버튼** (`src/components/layout/AppShell.tsx`)
+- "캘린더" 섹션 헤더 **오른쪽 끝**에 버튼 추가
+- 비연동: `+ 연동하기`(중립톤), 연동: `✓ 연동됨`(민트톤) — 상태별 스타일 분기
+- OAuth 콜백 감지: URL에 `?calendar=connected`가 있으면 `connectCalendar("google", user.email)` 호출 후 `history.replaceState`로 쿼리 파라미터 제거
+- 모달 인스턴스를 Shell 하단에 고정 렌더링하여 모든 페이지에서 재사용
+
+**4. 내 정보 페이지 — "캘린더 연동하기" 카드** (`src/app/profile/page.tsx`)
+- 프로필 헤더와 섹션 리스트 사이에 독립 카드 배치
+- 비연동: "외부 캘린더 일정을 Contexta에서 바로 확인하고 녹음하세요" + 민트 CTA 버튼
+- 연동: 프로바이더/이메일 표시 + 민트 테두리의 "연동 관리" 버튼
+- AppShell과 동일한 `CalendarIntegrationModal` 공유 — 두 진입점에서 동일한 UI/상태
+
+#### 설계 결정
+- 연동 상태를 localStorage에 저장하는 이유: Supabase provider_token은 세션 수명에 종속되고, 실제 Google Calendar API 호출은 별도 백엔드 프록시가 필요하므로 1차 버전은 "연동 여부"만 UI 상태로 관리
+- 향후 확장 지점: `users` 테이블에 `calendar_provider`/`calendar_email` 컬럼을 추가해 다중 기기 동기화 가능, 서버측에서 provider_token으로 이벤트 조회 후 `scheduledMeetings`에 병합
+
+---
+
 ## 작업 로그
 
 ### 2026-03-19: UI 디자인 리뉴얼 + 데모 미팅 시스템

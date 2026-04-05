@@ -2,10 +2,12 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Building2, Target, User, Pencil } from "lucide-react";
+import { Building2, Target, User, Pencil, Calendar as CalendarIcon, Check, Plus } from "lucide-react";
 import { supabase } from "@/utils/supabaseClient";
 import { useAuthStore } from "@/store/useAuthStore";
 import AppShell from "@/components/layout/AppShell";
+import CalendarIntegrationModal from "@/components/layout/CalendarIntegrationModal";
+import { useCalendarConnection } from "@/hooks/useCalendarConnection";
 import {
   type ProfileData,
   COACHING_STYLES,
@@ -26,6 +28,8 @@ function ProfileContent() {
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
   const [profileCompleted, setProfileCompleted] = useState(false);
   const [fetching, setFetching] = useState(true);
+  const [isCalendarModalOpen, setIsCalendarModalOpen] = useState(false);
+  const { connection, isConnected: isCalendarConnected } = useCalendarConnection();
 
   const displayName =
     user?.user_metadata?.full_name || user?.email?.split("@")[0] || "사용자";
@@ -141,6 +145,63 @@ function ProfileContent() {
           수정하기
         </button>
       </div>
+
+      {/* Calendar integration */}
+      <div className="mb-6 rounded-lg border border-notion-border bg-white p-5">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-start gap-3 min-w-0">
+            <div
+              className={`flex h-10 w-10 items-center justify-center rounded-lg shrink-0 ${
+                isCalendarConnected ? "bg-mint-light" : "bg-notion-bg-sub"
+              }`}
+            >
+              <CalendarIcon
+                className={`h-5 w-5 ${
+                  isCalendarConnected ? "text-mint-dark" : "text-notion-text-secondary"
+                }`}
+              />
+            </div>
+            <div className="min-w-0">
+              <h2 className="text-sm font-semibold text-dark">캘린더 연동</h2>
+              {isCalendarConnected && connection ? (
+                <p className="text-xs text-notion-text-secondary mt-0.5">
+                  {connection.provider === "google" ? "Google 캘린더" : "Outlook 캘린더"}
+                  {connection.email ? ` · ${connection.email}` : ""} 연동됨
+                </p>
+              ) : (
+                <p className="text-xs text-notion-text-secondary mt-0.5">
+                  외부 캘린더 일정을 Contexta에서 바로 확인하고 녹음하세요
+                </p>
+              )}
+            </div>
+          </div>
+          <button
+            onClick={() => setIsCalendarModalOpen(true)}
+            className={`inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg transition-colors shrink-0 ${
+              isCalendarConnected
+                ? "text-mint-dark bg-mint-light/60 hover:bg-mint-light border border-mint/30"
+                : "text-white bg-mint hover:bg-mint-dark"
+            }`}
+          >
+            {isCalendarConnected ? (
+              <>
+                <Check className="h-3.5 w-3.5" />
+                연동 관리
+              </>
+            ) : (
+              <>
+                <Plus className="h-3.5 w-3.5" />
+                캘린더 연동하기
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+
+      <CalendarIntegrationModal
+        open={isCalendarModalOpen}
+        onClose={() => setIsCalendarModalOpen(false)}
+      />
 
       {/* Profile sections */}
       <div className="flex flex-col gap-6">
