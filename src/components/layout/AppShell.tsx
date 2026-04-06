@@ -626,9 +626,12 @@ export default function AppShell({
               <div className="flex items-center gap-2">
                 <CreditCard className="h-3.5 w-3.5 text-mint shrink-0" />
                 <span className="text-xs font-medium text-dark">Free 플랜</span>
-                <span className="ml-auto text-[10px] font-medium text-mint bg-mint-light rounded px-1.5 py-0.5 cursor-pointer hover:bg-mint/15 transition-colors">
+                <button
+                  onClick={() => router.push("/pricing")}
+                  className="ml-auto text-[10px] font-medium text-mint bg-mint-light rounded px-1.5 py-0.5 cursor-pointer hover:bg-mint/15 transition-colors"
+                >
                   업그레이드
-                </span>
+                </button>
               </div>
               {quota && (
                 <div className="mt-2 ml-5.5">
