@@ -40,6 +40,8 @@ import MiniCalendar from "./MiniCalendar";
 import UpcomingMeetingCard from "./UpcomingMeetingCard";
 import CalendarIntegrationModal from "./CalendarIntegrationModal";
 import { useCalendarConnection } from "@/hooks/useCalendarConnection";
+import { useCalendarStore, type CalendarEvent } from "@/store/useCalendarStore";
+import { useCalendarSync } from "@/hooks/useCalendarSync";
 
 /* ===== Types ===== */
 export interface Project {
@@ -172,6 +174,8 @@ export default function AppShell({
   const [isCalendarModalOpen, setIsCalendarModalOpen] = useState(false);
   const { isConnected: isCalendarConnected, connect: connectCalendar } =
     useCalendarConnection();
+  const calendarEvents = useCalendarStore((s) => s.calendarEvents);
+  useCalendarSync();
 
   // Handle OAuth return: ?calendar=connected in URL → mark connected
   useEffect(() => {
@@ -825,21 +829,44 @@ export default function AppShell({
                     </div>
 
                     <div className="flex flex-col gap-2">
-                      {scheduledMeetings.length === 0 ? (
-                        <div className="text-center py-6">
-                          <Calendar className="h-6 w-6 text-notion-border mx-auto mb-2" />
-                          <p className="text-xs text-notion-text-muted">
-                            예정된 미팅이 없습니다
-                          </p>
-                          <button
-                            onClick={() => setIsScheduleModalOpen(true)}
-                            className="mt-2 text-xs text-mint-dark hover:text-mint transition-colors"
-                          >
-                            + 미팅 추가
-                          </button>
-                        </div>
-                      ) : (
-                        scheduledMeetings.map((sm) => {
+                      {(() => {
+                        // Merge manual scheduled meetings with synced calendar events
+                        type MergedEvent = CalendarEvent & { _manualId?: string };
+                        const manualItems: MergedEvent[] =
+                          scheduledMeetings.map((sm) => ({
+                            id: sm.id,
+                            _manualId: sm.id,
+                            title: sm.title,
+                            datetime: sm.datetime,
+                            duration: sm.duration,
+                            location: sm.location,
+                            attendees: sm.attendees,
+                            source: "manual" as const,
+                          }));
+                        const syncedItems: MergedEvent[] = calendarEvents.map((e) => ({ ...e }));
+                        const allMeetings: MergedEvent[] = [...manualItems, ...syncedItems].sort(
+                          (a, b) =>
+                            new Date(a.datetime).getTime() - new Date(b.datetime).getTime()
+                        );
+
+                        if (allMeetings.length === 0) {
+                          return (
+                            <div className="text-center py-6">
+                              <Calendar className="h-6 w-6 text-notion-border mx-auto mb-2" />
+                              <p className="text-xs text-notion-text-muted">
+                                예정된 미팅이 없습니다
+                              </p>
+                              <button
+                                onClick={() => setIsScheduleModalOpen(true)}
+                                className="mt-2 text-xs text-mint-dark hover:text-mint transition-colors"
+                              >
+                                + 미팅 추가
+                              </button>
+                            </div>
+                          );
+                        }
+
+                        return allMeetings.map((sm) => {
                           const dt = new Date(sm.datetime);
                           const now = new Date();
                           const isToday = dt.toDateString() === now.toDateString();
@@ -876,16 +903,23 @@ export default function AppShell({
                               location={sm.location}
                               attendees={sm.attendees}
                               isToday={isToday}
-                              onDelete={() => handleDeleteSchedule(sm.id)}
+                              source={sm.source}
+                              onDelete={
+                                sm.source === "manual" && "_manualId" in sm
+                                  ? () => handleDeleteSchedule(sm._manualId!)
+                                  : undefined
+                              }
                             />
                           );
-                        })
-                      )}
+                        });
+                      })()}
                     </div>
 
-                    <p className="text-[11px] text-notion-text-muted mt-3 text-center">
-                      Google Calendar 연동 시 자동으로 동기화됩니다
-                    </p>
+                    {!isCalendarConnected && (
+                      <p className="text-[11px] text-notion-text-muted mt-3 text-center">
+                        Google Calendar 연동 시 자동으로 동기화됩니다
+                      </p>
+                    )}
                   </section>
                 </div>
               </aside>

@@ -593,6 +593,81 @@ Phase 7 이후 로컬 테스트 중 발견된 버그들을 수정했습니다.
 
 ## 작업 로그
 
+### 2026-04-06: 외부 캘린더 실제 동기화 기능 구현 (Google Calendar API + iCal URL)
+
+#### 배경
+- 기존 캘린더 연동은 "UI만 완성, 실제 동기화 미구현" 상태였음.
+- Google OAuth로 연결은 되지만, Google Calendar API를 실제로 호출해서 이벤트를 가져오는 로직이 없었음.
+- "다가오는 미팅" 영역은 수동 입력(localStorage)으로만 채워졌음.
+- 사용자가 **어떤 캘린더를 동기화할지 선택하는 UI**도 없었음.
+
+#### 구현한 기능
+
+**1. Google Calendar 이벤트 실제 동기화**
+- Supabase 세션의 `provider_token` (Google OAuth access token)을 서버에서 추출하는 유틸리티 신설 (`utils/supabaseServer.ts`)
+- `/api/calendar/list` — 사용자의 Google Calendar 목록 조회 (id, summary, 색상, primary 여부)
+- `/api/calendar/events` — 선택한 캘린더들의 이벤트를 병렬 조회, 14일 미래 범위, 중복 제거 및 시간순 정렬
+- Google 토큰 만료 시 401 응답으로 클라이언트에 재인증 유도
+
+**2. iCal URL 임포트 (공유 링크 연동)**
+- `/api/calendar/ical` — 서버에서 .ics URL을 fetch하여 CORS 회피, 자체 구현한 경량 VEVENT 파서로 이벤트 추출
+- 1MB 크기 제한, 10초 타임아웃, VCALENDAR 유효성 검증
+- Google/Outlook/네이버 캘린더 등 모든 iCal 호환 서비스 지원
+- OAuth 없이도 URL만으로 연동 가능 → 비로그인 사용자에게도 iCal URL 입력 UI 제공
+
+**3. 캘린더 선택 UI**
+- CalendarIntegrationModal을 3탭 구조로 재설계: "캘린더 선택" / "iCal URL" / "연동 관리"
+- 캘린더 선택 탭: 체크박스 리스트, primary 캘린더 자동 선택, 색상 표시, "저장 및 동기화" 버튼
+- iCal URL 탭: URL 입력 → 서버 검증 → 등록, 등록된 URL 목록 + 삭제 기능, 서비스별 URL 찾는 가이드
+- 비연동 상태에서도 하단에 iCal URL 입력 섹션 노출
+
+**4. 캘린더 상태 관리**
+- Zustand store 신설 (`store/useCalendarStore.ts`): Google 캘린더 목록, 선택된 ID, 이벤트, iCal URL을 localStorage에 영속화
+- 동기화 훅 신설 (`hooks/useCalendarSync.ts`): 마운트 시 + 5분 주기 자동 동기화, Google 이벤트와 iCal 이벤트 병렬 fetch 후 병합
+
+**5. 다가오는 미팅 통합 표시**
+- AppShell의 "다가오는 미팅" 영역에서 수동 입력 + Google + iCal 이벤트를 시간순으로 병합 표시
+- UpcomingMeetingCard에 source 표시: Google 이벤트는 Google 아이콘, iCal 이벤트는 Globe 아이콘
+- 외부 동기화 이벤트는 삭제 버튼 비표시 (수동 입력만 삭제 가능)
+- 연동 안 된 상태에서만 "Google Calendar 연동 시 자동으로 동기화됩니다" 안내 표시
+
+#### 아키텍처
+
+```
+[브라우저]
+  ├─ CalendarIntegrationModal (캘린더 선택 / iCal URL 입력)
+  ├─ useCalendarSync (5분 주기 자동 동기화)
+  ├─ useCalendarStore (Zustand + localStorage 영속화)
+  └─ AppShell (manual + google + ical 이벤트 병합 표시)
+
+[Next.js API Routes] (서버)
+  ├─ /api/calendar/list   ← Google Calendar API (calendarList)
+  ├─ /api/calendar/events ← Google Calendar API (events, 병렬 조회)
+  └─ /api/calendar/ical   ← 외부 .ics URL fetch + 자체 VEVENT 파서
+```
+
+#### 신규 파일 목록
+
+| 파일 | 역할 |
+|------|------|
+| `src/utils/supabaseServer.ts` | Supabase 서버 클라이언트 + Google provider_token 추출 + 토큰 갱신 |
+| `src/app/api/calendar/list/route.ts` | Google Calendar 목록 조회 API |
+| `src/app/api/calendar/events/route.ts` | Google Calendar 이벤트 조회 API |
+| `src/app/api/calendar/ical/route.ts` | iCal URL fetch + 파싱 API |
+| `src/store/useCalendarStore.ts` | 캘린더 상태 Zustand store |
+| `src/hooks/useCalendarSync.ts` | 자동 동기화 오케스트레이션 훅 |
+
+#### 수정된 파일 목록
+
+| 파일 | 변경 유형 |
+|------|-----------|
+| `src/components/layout/CalendarIntegrationModal.tsx` | **재작성** — 3탭 구조, 캘린더 선택, iCal URL 관리 |
+| `src/components/layout/AppShell.tsx` | 수정 — calendarStore/Sync 통합, 병합 표시 |
+| `src/components/layout/UpcomingMeetingCard.tsx` | 수정 — source prop, Google/iCal 아이콘 |
+| `README.md` | 수정 — 본 작업 로그 추가 |
+
+---
+
 ### 2026-04-05 (추가 3): Vercel 배포 + Deepgram STT 청크 파이프라인 버그 수정
 
 #### 배경
