@@ -4,6 +4,8 @@ import "./globals.css";
 import AuthProvider from "@/components/providers/AuthProvider";
 import AuthGuard from "@/components/providers/AuthGuard";
 
+const ENABLE_AUTH = process.env.NEXT_PUBLIC_ENABLE_AUTH === "true";
+
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -43,9 +45,13 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased overscroll-none`}
       >
-        <AuthProvider>
-          <AuthGuard>{children}</AuthGuard>
-        </AuthProvider>
+        {ENABLE_AUTH ? (
+          <AuthProvider>
+            <AuthGuard>{children}</AuthGuard>
+          </AuthProvider>
+        ) : (
+          children
+        )}
       </body>
     </html>
   );

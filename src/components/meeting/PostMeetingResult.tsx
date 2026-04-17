@@ -7,6 +7,8 @@ import { useMeetingStore } from "@/store/useMeetingStore";
 import { downloadAsTxt, copyToClipboard } from "@/utils/exportUtils";
 import { X, Copy, Download, ArrowLeft, Mic, RefreshCw, AlertTriangle } from "lucide-react";
 
+const ENABLE_DB = process.env.NEXT_PUBLIC_ENABLE_DB === "true";
+
 interface PostMeetingResultProps {
   onRetrySummary?: () => void;
 }
@@ -18,6 +20,7 @@ export default function PostMeetingResult({ onRetrySummary }: PostMeetingResultP
   const isSavedToDb = useMeetingStore((s) => s.isSavedToDb);
   const summaryError = useMeetingStore((s) => s.summaryError);
   const setMeetingEnded = useMeetingStore((s) => s.setMeetingEnded);
+  const resetMeeting = useMeetingStore((s) => s.resetMeeting);
 
   useEffect(() => {
     if (!isGeneratingMinutes) return;
@@ -89,10 +92,11 @@ export default function PostMeetingResult({ onRetrySummary }: PostMeetingResultP
                   </button>
                 )}
                 <Link
-                  href="/dashboard"
+                  href={ENABLE_DB ? "/dashboard" : "/meeting"}
+                  onClick={!ENABLE_DB ? resetMeeting : undefined}
                   className="px-4 py-2 text-sm font-medium text-notion-text-secondary rounded-lg hover:bg-notion-bg-hover transition-colors"
                 >
-                  대시보드로 이동
+                  {ENABLE_DB ? "대시보드로 이동" : "새 미팅 시작"}
                 </Link>
               </div>
             </div>
@@ -117,10 +121,11 @@ export default function PostMeetingResult({ onRetrySummary }: PostMeetingResultP
                   닫고 다시 녹음하기
                 </button>
                 <Link
-                  href="/dashboard"
+                  href={ENABLE_DB ? "/dashboard" : "/meeting"}
+                  onClick={!ENABLE_DB ? resetMeeting : undefined}
                   className="px-4 py-2 text-sm font-medium text-mint-dark bg-mint-light rounded-lg hover:bg-mint/15 transition-colors"
                 >
-                  대시보드로 이동
+                  {ENABLE_DB ? "대시보드로 이동" : "새 미팅 시작"}
                 </Link>
               </div>
             </div>
@@ -130,16 +135,27 @@ export default function PostMeetingResult({ onRetrySummary }: PostMeetingResultP
         {/* Footer */}
         {!isGeneratingMinutes && finalMinutes && (
           <div className="flex items-center justify-between px-6 py-3 border-t border-notion-border shrink-0">
-            {isSavedToDb ? (
+            {ENABLE_DB ? (
+              isSavedToDb ? (
+                <Link
+                  href="/dashboard"
+                  className="inline-flex items-center gap-1.5 text-sm font-medium text-notion-text-secondary hover:text-dark transition-colors"
+                >
+                  <ArrowLeft className="h-3.5 w-3.5" />
+                  대시보드
+                </Link>
+              ) : (
+                <span className="text-xs text-notion-text-muted">저장 중...</span>
+              )
+            ) : (
               <Link
-                href="/dashboard"
+                href="/meeting"
+                onClick={resetMeeting}
                 className="inline-flex items-center gap-1.5 text-sm font-medium text-notion-text-secondary hover:text-dark transition-colors"
               >
-                <ArrowLeft className="h-3.5 w-3.5" />
-                대시보드
+                <Mic className="h-3.5 w-3.5" />
+                새 미팅 시작
               </Link>
-            ) : (
-              <span className="text-xs text-notion-text-muted">저장 중...</span>
             )}
             <div className="flex items-center gap-2">
               <button

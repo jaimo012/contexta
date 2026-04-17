@@ -2,13 +2,13 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useMeetingStore } from "@/store/useMeetingStore";
-import { useAuthStore } from "@/store/useAuthStore";
 import { useAudioRecorder } from "@/hooks/useAudioRecorder";
 import { useMeetingTimer } from "@/hooks/useMeetingTimer";
 import { useAiHint } from "@/hooks/useAiHint";
-import { supabase } from "@/utils/supabaseClient";
 import { apiUrl } from "@/utils/apiUrl";
 import { Mic, Square, Sparkles, ChevronDown } from "lucide-react";
+
+const ENABLE_DB = process.env.NEXT_PUBLIC_ENABLE_DB === "true";
 
 interface Project {
   id: string;
@@ -34,13 +34,15 @@ export default function TopBar() {
   const isDemoMode = useMeetingStore((s) => s.isDemoMode);
 
   const { startRecording, stopRecording } = useAudioRecorder();
-  const { startTimer, stopTimer } = useMeetingTimer(stopRecording);
+  const { startTimer, stopTimer } = useMeetingTimer();
   const { fetchHint } = useAiHint();
 
   const [projects, setProjects] = useState<Project[]>([]);
   const [isStartingRecording, setIsStartingRecording] = useState(false);
 
   const fetchProjects = useCallback(async () => {
+    if (!ENABLE_DB) return;
+    const { supabase } = await import("@/utils/supabaseClient");
     const { data, error } = await supabase
       .from("projects")
       .select("id, name")
@@ -142,6 +144,14 @@ export default function TopBar() {
   };
 
   const saveMeetingToDb = async (transcript: string, summary: string) => {
+    if (!ENABLE_DB) {
+      console.log("[Phase1] DB 저장 스킵");
+      return;
+    }
+
+    const { supabase } = await import("@/utils/supabaseClient");
+    const { useAuthStore } = await import("@/store/useAuthStore");
+
     const user = useAuthStore.getState().user;
     if (!user) {
       console.error("[DB] 로그인된 사용자 정보가 없습니다.");
@@ -232,7 +242,7 @@ export default function TopBar() {
 
       {/* Right: Actions */}
       <div className="flex items-center gap-1.5">
-        {isDemoMode ? (
+        {isDemoMode && ENABLE_DB ? (
           <a
             href="/dashboard"
             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-notion-text-secondary bg-notion-bg-hover rounded-md hover:bg-notion-border transition-colors"

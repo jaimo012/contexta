@@ -17,7 +17,10 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { transcripts } = body as { transcripts: string };
+    const raw = body?.transcripts;
+    const transcripts = Array.isArray(raw)
+      ? (raw as string[]).join("\n")
+      : String(raw ?? "");
 
     if (!transcripts || transcripts.trim() === "") {
       return NextResponse.json(
@@ -29,7 +32,7 @@ export async function POST(request: NextRequest) {
     const client = new Anthropic({ apiKey });
 
     const message = await client.messages.create({
-      model: "claude-3-5-haiku-20241022",
+      model: "claude-haiku-4-5-20251001",
       max_tokens: 256,
       system: SYSTEM_PROMPT,
       messages: [

@@ -30,6 +30,8 @@ function buildSupabaseClient(request: NextRequest) {
 async function getUserKeywords(
   request: NextRequest
 ): Promise<string[]> {
+  if (process.env.ENABLE_DB !== "true") return [];
+
   const supabase = buildSupabaseClient(request);
   const {
     data: { user },
@@ -91,7 +93,7 @@ export async function POST(request: NextRequest) {
         model: "nova-2",
         language: "ko",
         smart_format: true,
-        keywords,
+        ...(keywords.length > 0 && { keywords }),
       }
     );
 
